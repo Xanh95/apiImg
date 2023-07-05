@@ -6,11 +6,7 @@ use App\Http\Requests\ApiImgrequest;
 use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-
+use Illuminate\Support\Facades\Storage;
 
 class ApiImg extends Controller
 {
@@ -19,9 +15,12 @@ class ApiImg extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+
     public function index()
     {
         //
+        $posts = Photo::latest()->paginate(10);
+        return response()->json($posts, 200);
     }
 
     /**
@@ -44,21 +43,24 @@ class ApiImg extends Controller
     {
         //
 
-        $directory = public_path('upload/' . date('Y') . '/' . date('n') . '/' . date('d'));
-        if (!File::isDirectory($directory)) {
-            File::makeDirectory($directory, 0777, true, true);
+        $dirUpload = 'public/upload/' . date('Y/m/d');
+        $image = $request->image;
+        $title = date('Y-m-d') . '_' . Str::random(10) . '.';
+        if (!Storage::exists($dirUpload)) {
+            Storage::makeDirectory($dirUpload, 0755, true);
         }
         if ($request->hasFile('image')) {
-            $imageName =  date('Y-m-d') . '_' . Str::random(10) . '.' . $request->file('image')->getClientOriginalName();
-            $request->image->move(public_path('upload/' . date('Y') . '/' . date('n') . '/' . date('d')), $imageName);
-            $imageUrl = asset('upload/' . date('Y') . '/' . date('n') . '/' . date('d') . '/' . $imageName);
+            $imageName = $title . $image->extension();
+            $image->storeAs($dirUpload, $imageName);
+            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+            $photo = new Photo;
+            $photo->name = $imageName;
+            $photo->path = $dirUpload;
+            $photo->url = $imageUrl;
+            $photo->save();
+            return response()->json($imageUrl, 200);
         }
-        $photo = new Photo;
-        $photo->name = $imageName;
-        $photo->path = 'upload/' . date('Y') . '/' . date('n') . '/' . date('d');
-        $photo->url = $imageUrl;
-        $photo->save();
-        return response()->json($photo);
+        return response()->json('upload fail', 404);
     }
 
     /**
@@ -67,9 +69,11 @@ class ApiImg extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Photo $photo)
     {
         //
+
+
     }
 
     /**
@@ -78,9 +82,10 @@ class ApiImg extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Photo $photo)
     {
         //
+        return response()->json($photo, 200);
     }
 
     /**
@@ -90,27 +95,40 @@ class ApiImg extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(ApiImgrequest $request, $photo)
+    public function update(ApiImgrequest $request, Photo $photo)
     {
         //
-
-        try {
-
-            $obj_photo = Photo::findOrFail($photo);
-
-            if ($request->hasFile('image')) {
-                $imageNewName =  date('Y-m-d') . '_' . Str::random(10) . '.' . $request->file('image')->getClientOriginalName();
-                File::delete(public_path($obj_photo->path . "/" . $obj_photo->name));
-                $obj_photo->name = $imageNewName;
-                $obj_photo->update();
-                $request->image->move(public_path($obj_photo->path), $imageNewName);
-                return response()->json('sua anh thanh cong', $obj_photo);
+        $dirUpload = 'public/upload/' . date('Y/m/d');
+        $title = date('Y-m-d') . '_' . Str::random(10) . '.';
+        $name = $request->name;
+        $image = $request->image;
+        if ($image) {
+            $imageNewName =  $title . '.' . $image->extension();
+            if ($name) {
+                $imageNewName = $name . '.' . $image->extension();
             }
-            return response()->json('sua anh that bai');
-        } catch (ModelNotFoundException $e) {
-
-            return response()->json(['error' => 'Không tìm thấy đối tượng'], 404);
+            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageNewName));
+            Storage::delete($photo->path . "/" . $photo->name);
+            $image->storeAs($dirUpload, $imageNewName);
+            $photo->update([
+                'path' => $dirUpload,
+                'url' => $imageUrl,
+                'name' => $imageNewName
+            ]);
+            return response()->json('edit success', 200);
         }
+        if ($name && $image == '') {
+            $imageNewName =  $name . '.' . pathinfo($photo->name, PATHINFO_EXTENSION);
+            Storage::move($photo->path . "/" . $photo->name, $photo->path . "/" . $imageNewName);
+            $imageUrl = asset(Storage::url($photo->path . '/' . $imageNewName));
+            $photo->update([
+                'url' => $imageUrl,
+                'name' => $imageNewName,
+            ]);
+            
+            return response()->json($imageUrl, 200);
+        }
+        return response()->json('edit fail', 200);
     }
 
     /**
@@ -119,18 +137,14 @@ class ApiImg extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($photo)
+    public function destroy(Photo $photo)
     {
         //
-        try {
-            $obj_photo = Photo::findOrFail($photo);
-            if (File::delete(public_path($obj_photo->path . "/" . $obj_photo->name))) {
-                $obj_photo->delete();
-                return response()->json('xóa thành công');
-            }
-            return response()->json('xóa thất bại');
-        } catch (ModelNotFoundException $e) {
-            return response()->json('khong tim thay doi tuong');
+
+        if (Storage::delete($photo->path . "/" . $photo->name)) {
+            $photo->delete();
+            return response()->json('delete success', 200);
         }
+        return response()->json('fail delete', 404);
     }
 }

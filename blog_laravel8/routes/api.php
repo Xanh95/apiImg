@@ -28,4 +28,7 @@ Route::delete('/delete/{post}', [App\Http\Controllers\ApiPostController::class, 
 Route::get('/post/{post}', [App\Http\Controllers\ApiPostController::class, 'show']);
 Route::post('save', [App\Http\Controllers\ApiImg::class, 'store']);
 Route::post('edit/photo/{photo}', [App\Http\Controllers\ApiImg::class, 'update']);
+Route::get('edit/photo/{photo}', [App\Http\Controllers\ApiImg::class, 'edit']);
+Route::get('get/photo', [App\Http\Controllers\ApiImg::class, 'index']);
 Route::delete('delete/photo/{photo}', [App\Http\Controllers\ApiImg::class, 'destroy']);
+Route::get('get/photo/{photo}', [App\Http\Controllers\ApiImg::class, 'show']);
