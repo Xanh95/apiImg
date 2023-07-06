@@ -7,8 +7,9 @@ use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\ResponseApi;
 
-class ApiImg extends Controller
+class ApiImg extends ResponseApi
 {
     /**
      * Display a listing of the resource.
@@ -19,8 +20,8 @@ class ApiImg extends Controller
     public function index()
     {
         //
-        $posts = Photo::latest()->paginate(10);
-        return response()->json($posts, 200);
+        $posts = Photo::all();
+        return $this->handleSuccess($posts, 'get success');
     }
 
     /**
@@ -45,11 +46,11 @@ class ApiImg extends Controller
 
         $dirUpload = 'public/upload/' . date('Y/m/d');
         $image = $request->image;
-        $title = date('Y-m-d') . '_' . Str::random(10) . '.';
+        $title = Str::random(10) . '.';
         if (!Storage::exists($dirUpload)) {
             Storage::makeDirectory($dirUpload, 0755, true);
         }
-        if ($request->hasFile('image')) {
+        if ($image) {
             $imageName = $title . $image->extension();
             $image->storeAs($dirUpload, $imageName);
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
@@ -58,9 +59,9 @@ class ApiImg extends Controller
             $photo->path = $dirUpload;
             $photo->url = $imageUrl;
             $photo->save();
-            return response()->json($imageUrl, 200);
+            return $this->handleSuccess($photo, 'upload success');
         }
-        return response()->json('upload fail', 404);
+        return $this->handleError('upload fail', 404);
     }
 
     /**
@@ -72,8 +73,7 @@ class ApiImg extends Controller
     public function show(Photo $photo)
     {
         //
-
-
+        return $this->handleSuccess($photo->url, 'success');
     }
 
     /**
@@ -85,7 +85,7 @@ class ApiImg extends Controller
     public function edit(Photo $photo)
     {
         //
-        return response()->json($photo, 200);
+        return $this->handleSuccess($photo, 'success');
     }
 
     /**
@@ -99,36 +99,36 @@ class ApiImg extends Controller
     {
         //
         $dirUpload = 'public/upload/' . date('Y/m/d');
-        $title = date('Y-m-d') . '_' . Str::random(10) . '.';
-        $name = $request->name;
+        $title =  Str::random(10);
+        $name = Str::slug($request->name);
         $image = $request->image;
         if ($image) {
             $imageNewName =  $title . '.' . $image->extension();
             if ($name) {
-                $imageNewName = $name . '.' . $image->extension();
+                $imageNewName = $name . '-' . $title . '.' . $image->extension();
             }
+            $image->storeAs($dirUpload, $imageNewName);
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageNewName));
             Storage::delete($photo->path . "/" . $photo->name);
-            $image->storeAs($dirUpload, $imageNewName);
             $photo->update([
                 'path' => $dirUpload,
                 'url' => $imageUrl,
                 'name' => $imageNewName
             ]);
-            return response()->json('edit success', 200);
+            return $this->handleSuccess($photo, 'edit success');
         }
         if ($name && $image == '') {
-            $imageNewName =  $name . '.' . pathinfo($photo->name, PATHINFO_EXTENSION);
+            $imageNewName =  $name  . '-' . $title . '.' . pathinfo($photo->name, PATHINFO_EXTENSION);
             Storage::move($photo->path . "/" . $photo->name, $photo->path . "/" . $imageNewName);
             $imageUrl = asset(Storage::url($photo->path . '/' . $imageNewName));
             $photo->update([
                 'url' => $imageUrl,
                 'name' => $imageNewName,
             ]);
-            
-            return response()->json($imageUrl, 200);
+
+            return $this->handleSuccess($photo, 'edit success');
         }
-        return response()->json('edit fail', 200);
+        return $this->handleError('edit fail', 404);
     }
 
     /**
@@ -143,8 +143,8 @@ class ApiImg extends Controller
 
         if (Storage::delete($photo->path . "/" . $photo->name)) {
             $photo->delete();
-            return response()->json('delete success', 200);
+            return $this->handleSuccess($photo, 'delete success');
         }
-        return response()->json('fail delete', 404);
+        return $this->handleError('delete fail', 404);
     }
 }
