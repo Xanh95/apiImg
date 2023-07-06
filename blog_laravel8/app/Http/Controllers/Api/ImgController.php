@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\ApiImgrequest;
 use App\Models\Photo;
@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\ResponseApi;
 
-class ApiImg extends ResponseApi
+class ImgController extends ResponseApi
 {
     /**
      * Display a listing of the resource.
