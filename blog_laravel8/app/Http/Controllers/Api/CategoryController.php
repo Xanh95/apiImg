@@ -36,25 +36,24 @@ class CategoryController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
-        $dirUpload = 'public/upload/Category/' . date('Y/m/d');
+        $dirUpload = 'public/upload/category/' . date('Y/m/d');
         $image = $request->image;
-        $title = Str::random(10) . '.';
+        $title = Str::random(10);
         $slug =  Str::slug($request->name);
-        $user = Auth::user();
+        $user = Auth::user()->id;
 
-        if (!Storage::exists($dirUpload)) {
-            Storage::makeDirectory($dirUpload, 0755, true);
-        }
         $category = new Category;
         if ($image) {
-            $imageName = $title . $image->extension();
+            if (!Storage::exists($dirUpload)) {
+                Storage::makeDirectory($dirUpload, 0755, true);
+            }
+            $imageName = $title . '.' . $image->extension();
             $image->storeAs($dirUpload, $imageName);
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             $category->link = $imageUrl;
-            $category->path = $dirUpload . '/' . $imageName;
         }
         $category->slug = $slug;
-        $category->createByUser = $user->email;
+        $category->createByUser = $user;
         $category->fill($request->all());
 
         if ($category->save()) {
@@ -74,39 +73,40 @@ class CategoryController extends ResponseApiController
     public function update(Request $request, Category $category)
     {
         $request->validate([
+            'name' => 'required',
+            'status' => 'required|numeric',
+            'type' => 'required',
+            'description' => 'required',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
+        ], [
+            'name.required' => 'A name is required',
+            'status.required' => 'A status is required',
+            'status.numeric' => 'A status is numeric',
+            'description.numeric' => 'A status is numeric',
+            'type.required' => 'A type is required',
         ]);
         $image = $request->image;
-        $dirUpload = 'public/upload/Category/' . date('Y/m/d');
-        $title =  Str::random(10) . '.';
-        $imageUrl = $category->link;
-        $path = $category->path;
-        $name = $request->name ? $request->name : $category->name;
-        $status = $request->status ? $request->status : $category->status;
-        $type = $request->type ? $request->type : $category->type;
-        $description = $request->description ?? $category->description;
-        $slug =  Str::slug($name);
-        $user = Auth::user();
+        $path = str_replace('http://localhost/storage', 'public', $category->link);
+        $user = Auth::user()->id;
+        $slug = STR::slug($request->name);
+        $category->slug = $slug;
+        $category->createByUser = $user;
+        $category->fill($request->all());
         if ($image) {
+            $dirUpload = 'public/upload/category/' . date('Y/m/d');
+            $title =  Str::random(10);
             if (!Storage::exists($dirUpload)) {
                 Storage::makeDirectory($dirUpload, 0755, true);
             }
-            $imageName = $title . $image->extension();
+            $imageName = $title . '.' . $image->extension();
             $image->storeAs($dirUpload, $imageName);
-            Storage::delete($category->path);
+            if ($path) {
+                Storage::delete($path);
+            }
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
-            $path = $dirUpload . '/' . $imageName;
+            $category->link = $imageUrl;
         }
-        if ($category->update([
-            'slug' => $slug,
-            'status' => $status,
-            'type' => $type,
-            'name' => $name,
-            'link' => $imageUrl,
-            'path' => $path,
-            'createByUser' => $user->email,
-            'description' => $description
-        ])) {
+        if ($category->save()) {
             return $this->handleSuccess($category, 'update success');
         }
         return $this->handleError('error update', 404);
@@ -114,14 +114,14 @@ class CategoryController extends ResponseApiController
     public function destroy(Category $category)
     {
         //
-        $path = $category->path;
+        $path = str_replace('http://localhost/storage', 'public', $category->link);
         if ($path) {
             Storage::delete($path);
         }
 
         if ($category->delete()) {
 
-            return $this->handleSuccess($category, 'delete success');
+            return $this->handleSuccess([], 'delete success');
         }
         return $this->handleError('delete error', 404);
     }
