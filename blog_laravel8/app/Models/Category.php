@@ -4,8 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Post extends Model
+class Category extends Model
 {
     use HasFactory;
     protected $fillable = [
@@ -13,14 +14,12 @@ class Post extends Model
         'slug',
         'status',
         'type',
-        'category_id',
+        'description',
+        'link',
+        'path'
     ];
-    public function Category()
+    public function posts(): BelongsToMany
     {
-        return $this->belongsToMany(Category::class);
-    }
-    public function postMeta()
-    {
-        return $this->hasOne(PostMeta::class);
+        return $this->belongsToMany(Post::class);
     }
 }

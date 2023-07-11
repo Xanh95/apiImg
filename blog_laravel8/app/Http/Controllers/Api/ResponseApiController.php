@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ResponseApi extends Controller
+class ResponseApiController extends Controller
 {
     //
     public function handleSuccess($data, $message): JsonResponse

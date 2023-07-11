@@ -7,7 +7,7 @@ use App\Http\Requests\CreatePostRequest;
 use App\Models\Post;
 use Illuminate\Http\Request;
 
-class PostController extends Controller
+class PostController extends ResponseApiController
 {
     /**
      * Display a listing of the resource.
@@ -18,7 +18,7 @@ class PostController extends Controller
     {
         //
         $posts = Post::latest()->paginate(1);
-        return response()->json($posts);
+        return $this->handleSuccess($posts, 'get all success');
     }
 
     /**
@@ -43,7 +43,8 @@ class PostController extends Controller
         $post = new Post;
         $post->fill($request->all());
         $post->save();
-        return response()->json($post);
+
+        return $this->handleSuccess($post, 'save success');
     }
 
     /**
@@ -55,7 +56,7 @@ class PostController extends Controller
     public function show(Post $post)
     {
         //
-        return response()->json($post);
+        return $this->handleSuccess($post, 'show success');
     }
 
     /**
@@ -66,6 +67,7 @@ class PostController extends Controller
      */
     public function edit(Post $post, Request $request)
     {
+        return $this->handleSuccess($post, 'show success');
     }
 
     /**
@@ -79,10 +81,13 @@ class PostController extends Controller
     {
         //
         $post->update([
-            'title' => $request->title,
-            'content' => $request->content
+            'name' => $request->name,
+            'slug' => $request->slug,
+            'description' => $request->description,
+            'type' => $request->type,
+            'status' => $request->type,
         ]);
-        return response()->json($post);
+        return $this->handleSuccess($post, 'update success');
     }
 
     /**
@@ -95,6 +100,6 @@ class PostController extends Controller
     {
         //
         $post->delete();
-        return response()->json('xoa bai thanh cong');
+        return $this->handleSuccess('delete success', 200);
     }
 }

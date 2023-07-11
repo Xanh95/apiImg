@@ -7,9 +7,10 @@ use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\ResponseApi;
+use App\Http\Controllers\Api\ResponseApiController;
+use Illuminate\Support\Facades\File;
 
-class ImgController extends ResponseApi
+class PhotoController extends ResponseApiController
 {
     /**
      * Display a listing of the resource.
@@ -118,7 +119,7 @@ class ImgController extends ResponseApi
             return $this->handleSuccess($photo, 'edit success');
         }
         if ($name && $image == '') {
-            $imageNewName =  $name  . '-' . $title . '.' . pathinfo($photo->name, PATHINFO_EXTENSION);
+            $imageNewName =  $name  . '-' . $title . '.' . File::extension($photo->name);
             Storage::move($photo->path . "/" . $photo->name, $photo->path . "/" . $imageNewName);
             $imageUrl = asset(Storage::url($photo->path . '/' . $imageNewName));
             $photo->update([
