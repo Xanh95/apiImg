@@ -40,9 +40,12 @@ class CategoryController extends ResponseApiController
         $image = $request->image;
         $title = Str::random(10);
         $slug =  Str::slug($request->name);
-        $user = Auth::user()->id;
-
+        $user = Auth::id();
         $category = new Category;
+        $category->slug = $slug;
+        $category->createByUser = $user;
+        $category->fill($request->all());
+
         if ($image) {
             if (!Storage::exists($dirUpload)) {
                 Storage::makeDirectory($dirUpload, 0755, true);
@@ -52,9 +55,6 @@ class CategoryController extends ResponseApiController
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             $category->link = $imageUrl;
         }
-        $category->slug = $slug;
-        $category->createByUser = $user;
-        $category->fill($request->all());
 
         if ($category->save()) {
             return $this->handleSuccess($category, 'save success');
@@ -87,7 +87,7 @@ class CategoryController extends ResponseApiController
         ]);
         $image = $request->image;
         $path = str_replace('http://localhost/storage', 'public', $category->link);
-        $user = Auth::user()->id;
+        $user = Auth::id();
         $slug = Str::slug($request->name);
         $category->slug = $slug;
         $category->createByUser = $user;
