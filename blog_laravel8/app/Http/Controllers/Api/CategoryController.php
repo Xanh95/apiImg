@@ -17,6 +17,7 @@ class CategoryController extends ResponseApiController
     public function index()
     {
         $category = Category::all();
+
         return $this->handleSuccess($category, 'get all success');
     }
     public function store(Request $request)
@@ -42,10 +43,10 @@ class CategoryController extends ResponseApiController
         $slug =  Str::slug($request->name);
         $user = Auth::id();
         $category = new Category;
+
         $category->slug = $slug;
         $category->createByUser = $user;
         $category->fill($request->all());
-
         if ($image) {
             if (!Storage::exists($dirUpload)) {
                 Storage::makeDirectory($dirUpload, 0755, true);
@@ -64,6 +65,7 @@ class CategoryController extends ResponseApiController
     public function edit(Category $category)
     {
         $data = $category;
+
         if ($data) {
             return $this->handleSuccess($data, 'get success');
         }
@@ -85,10 +87,12 @@ class CategoryController extends ResponseApiController
             'description.numeric' => 'A status is numeric',
             'type.required' => 'A type is required',
         ]);
+
         $image = $request->image;
         $path = str_replace('http://localhost/storage', 'public', $category->link);
         $user = Auth::id();
         $slug = Str::slug($request->name);
+
         $category->slug = $slug;
         $category->createByUser = $user;
         $category->fill($request->all());
@@ -106,6 +110,7 @@ class CategoryController extends ResponseApiController
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             $category->link = $imageUrl;
         }
+
         if ($category->save()) {
             return $this->handleSuccess($category, 'update success');
         }
@@ -115,12 +120,12 @@ class CategoryController extends ResponseApiController
     {
         //
         $path = str_replace('http://localhost/storage', 'public', $category->link);
+
         if ($path) {
             Storage::delete($path);
         }
 
         if ($category->delete()) {
-
             return $this->handleSuccess([], 'delete success');
         }
         return $this->handleError('delete error', 404);
