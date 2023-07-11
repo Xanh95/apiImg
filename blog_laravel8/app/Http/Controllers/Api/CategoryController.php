@@ -88,7 +88,7 @@ class CategoryController extends ResponseApiController
         $image = $request->image;
         $path = str_replace('http://localhost/storage', 'public', $category->link);
         $user = Auth::user()->id;
-        $slug = STR::slug($request->name);
+        $slug = Str::slug($request->name);
         $category->slug = $slug;
         $category->createByUser = $user;
         $category->fill($request->all());
