@@ -22,7 +22,7 @@ class CategoryController extends ResponseApiController
     }
     public function store(Request $request)
     {
-        //
+
         $request->validate([
             'name' => 'required',
             'status' => 'required|numeric',
@@ -33,7 +33,7 @@ class CategoryController extends ResponseApiController
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
             'status.numeric' => 'A status is numeric',
-            'description.numeric' => 'A status is numeric',
+            'description.required' => 'A status is required',
             'type.required' => 'A type is required',
         ]);
 
@@ -118,7 +118,7 @@ class CategoryController extends ResponseApiController
     }
     public function destroy(Category $category)
     {
-        //
+
         $path = str_replace('http://localhost/storage', 'public', $category->link);
 
         if ($path) {
