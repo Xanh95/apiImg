@@ -22,23 +22,25 @@ Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'regis
 Route::post('/login', [App\Http\Controllers\Api\UserController::class, 'login']);
 
 Route::middleware('auth:api')->group(function () {
+    // get user
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
+    // post
     Route::post('/create', [App\Http\Controllers\Api\PostController::class, 'store']);
-    Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index']);
-    Route::put('/edit/{post}', [App\Http\Controllers\Api\PostController::class, 'update']);
+    Route::get('/edit/{post}', [App\Http\Controllers\Api\PostController::class, 'edit']);
+    Route::post('/edit/{post}', [App\Http\Controllers\Api\PostController::class, 'update']);
     Route::delete('/delete/{post}', [App\Http\Controllers\Api\PostController::class, 'destroy']);
+    // category
     Route::post('save/category', [App\Http\Controllers\Api\CategoryController::class, 'store']);
     Route::get('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'edit']);
     Route::post('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'update']);
     Route::delete('delete/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'destroy']);
-    Route::get('/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'show']);
     Route::get('/category', [App\Http\Controllers\Api\CategoryController::class, 'index']);
+    // photo
+    Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);
+    Route::get('edit/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'edit']);
+    Route::post('edit/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'update']);
+    Route::delete('delete/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'destroy']);
 });
 
-Route::get('/post/{post}', [App\Http\Controllers\Api\PostController::class, 'show']);
-Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);
-Route::post('edit/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'update']);
-Route::get('edit/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'edit']);
 Route::get('get/photo', [App\Http\Controllers\Api\PhotoController::class, 'index']);
-Route::delete('delete/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'destroy']);
 Route::get('get/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'show']);

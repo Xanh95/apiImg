@@ -12,11 +12,6 @@ use Illuminate\Support\Facades\File;
 
 class PhotoController extends ResponseApiController
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
 
     public function index()
     {
@@ -24,23 +19,6 @@ class PhotoController extends ResponseApiController
         $posts = Photo::all();
         return $this->handleSuccess($posts, 'get success');
     }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(ApiImgrequest $request)
     {
         //
@@ -65,37 +43,19 @@ class PhotoController extends ResponseApiController
         return $this->handleError('upload fail', 404);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function show(Photo $photo)
     {
         //
         return $this->handleSuccess($photo->url, 'success');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function edit(Photo $photo)
     {
         //
         return $this->handleSuccess($photo, 'success');
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+
     public function update(ApiImgrequest $request, Photo $photo)
     {
         //
@@ -132,12 +92,7 @@ class PhotoController extends ResponseApiController
         return $this->handleError('edit fail', 404);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+
     public function destroy(Photo $photo)
     {
         //

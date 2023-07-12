@@ -17,7 +17,7 @@ class CreateCategoriesTable extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug');
-            $table->string('createByUser');
+            $table->integer('user_id');
             $table->text('link')->nullable();
             $table->integer('status');
             $table->text('description');

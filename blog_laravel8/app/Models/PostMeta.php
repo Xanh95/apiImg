@@ -11,8 +11,7 @@ class PostMeta extends Model
     protected $fillable = [
         'post_id',
         'link',
-        'path',
-        'description',
+        'slug'
     ];
     function post()
     {
