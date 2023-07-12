@@ -25,7 +25,7 @@ class PostController extends ResponseApiController
             'type' => 'required',
             'description' => 'required',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'category_id' => 'required',
+            'category_id' => 'required|array',
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
@@ -61,9 +61,8 @@ class PostController extends ResponseApiController
         $post->save();
         $post_meta->post_id = $post->id;
         $post_meta->save();
-        foreach ($category_ids as $category_id) {
-            $post->Category()->attach($category_id);
-        }
+        $post->Category()->attach($category_ids);
+
 
         return $this->handleSuccess($post, 'save success');
     }
@@ -82,7 +81,7 @@ class PostController extends ResponseApiController
             'type' => 'required',
             'description' => 'required',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'category_id' => 'required',
+            'category_id' => 'required|array',
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
@@ -95,7 +94,6 @@ class PostController extends ResponseApiController
         $path = str_replace(url('/') . '/storage', 'public', $post->postMeta->link);
         $user = Auth::id();
         $slug = Str::slug($request->name);
-
         $category_ids = $request->category_id;
 
         if ($image) {
@@ -121,9 +119,8 @@ class PostController extends ResponseApiController
         $post->type = $request->type;
         $post->description = $request->description;
         $post->postMeta->post_id = $post->id;
-        foreach ($category_ids as $category_id) {
-            $post->Category()->attach($category_id);
-        }
+        $post->Category()->attach($category_ids);
+
         $post->save();
         $post->postMeta->save();
         $data =  $post->load('category', 'postMeta');
