@@ -26,7 +26,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
     // post
     Route::get('/get/postInCategory/{category}', [App\Http\Controllers\Api\PostController::class, 'postInCategory']);
-    Route::get('/get/categoryInPost/{post}', [App\Http\Controllers\Api\PostController::class, 'categoryInPost']);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store']);
     Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit']);
     Route::post('/edit/post{post}', [App\Http\Controllers\Api\PostController::class, 'update']);

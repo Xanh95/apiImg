@@ -18,6 +18,7 @@ class PostController extends ResponseApiController
     public function postInCategory(Category $category)
     {
         $data = $category->posts;
+
         return $this->handleSuccess($data, 'success');
     }
 
@@ -128,7 +129,10 @@ class PostController extends ResponseApiController
         $post->Category()->sync($category_ids);
         $post->save();
         $post->postMeta->save();
-        $data =  $post->load('category', 'postMeta');
+        $data =  $post->load(['category' => function ($query) {
+            $query->where('status', '1');
+        }, 'postMeta']);
+
 
         return $this->handleSuccess($data, 'update success');
     }
