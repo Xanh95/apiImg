@@ -98,7 +98,7 @@ class PhotoController extends ResponseApiController
         //
 
         if (Storage::delete($photo->path . "/" . $photo->name)) {
-            $photo->delete();
+            $photo->forceDelete();
             return $this->handleSuccess($photo, 'delete success');
         }
         return $this->handleError('delete fail', 404);

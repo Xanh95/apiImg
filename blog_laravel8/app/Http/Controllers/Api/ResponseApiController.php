@@ -16,6 +16,7 @@ class ResponseApiController extends Controller
             "data" => $data,
             "message" => $message
         ];
+
         return response()->json($response);
     }
     public function handleError($message, $code)
@@ -23,6 +24,7 @@ class ResponseApiController extends Controller
         $response = [
             'message' => $message
         ];
+
         return response()->json($response, $code);
     }
 }

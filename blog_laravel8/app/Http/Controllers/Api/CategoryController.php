@@ -16,7 +16,7 @@ class CategoryController extends ResponseApiController
 
     public function index()
     {
-        $category = Category::all();
+        $category = Category::all()->where('status', '1');
 
         return $this->handleSuccess($category, 'get all success');
     }
@@ -125,7 +125,7 @@ class CategoryController extends ResponseApiController
             Storage::delete($path);
         }
 
-        $category->delete();
+        $category->forceDelete();
         return $this->handleSuccess([], 'delete success');
     }
 }

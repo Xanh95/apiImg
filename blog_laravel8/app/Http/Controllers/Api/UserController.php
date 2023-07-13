@@ -20,10 +20,13 @@ class UserController extends ResponseApiController
             'password' => 'required|min:8',
             'name' => 'required|max:150'
         ]);
+
         $user = new User;
+
         $user->fill($request->all());
         $user->password = Hash::make($request->password);
         $user->save();
+
         return $this->handleSuccess($user, 'success');
     }
     public function login(ApiLoginrequest $request)
@@ -32,6 +35,7 @@ class UserController extends ResponseApiController
             'email' => 'required|email',
             'password' => 'required|min:8',
         ]);
+
         if (Auth::attempt([
             'email' => $request->email,
             'password' => $request->password
@@ -40,11 +44,13 @@ class UserController extends ResponseApiController
             $user->token = $user->createToken('App')->accessToken;
             return $this->handleSuccess($user, 'success');
         }
+
         return $this->handleError('wrong passsword or email', 401);
     }
     public function userInfo(Request $request)
     {
         $user = $request->user('api');
+
         return $this->handleSuccess($user, 'success');
     }
 }

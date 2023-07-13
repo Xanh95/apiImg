@@ -19,7 +19,7 @@ class CreateCategoriesTable extends Migration
             $table->string('slug');
             $table->integer('user_id');
             $table->text('link')->nullable();
-            $table->integer('status');
+            $table->enum('status', ['1', '0'])->default('1');
             $table->text('description');
             $table->text('type');
             $table->timestamps();

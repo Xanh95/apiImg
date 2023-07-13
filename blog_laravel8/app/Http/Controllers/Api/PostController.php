@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Storage;
 class PostController extends ResponseApiController
 {
 
+    public function postInCategory(Category $category)
+    {
+        $data = $category->posts;
+        return $this->handleSuccess($data, 'success');
+    }
 
     public function store(Request $request)
     {
@@ -68,9 +73,11 @@ class PostController extends ResponseApiController
     }
     public function edit(Post $post)
     {
-        $data =  $post->load('category', 'postMeta');
+        $data = $post->load(['category' => function ($query) {
+            $query->where('status', '1');
+        }, 'postMeta']);
 
-        return $this->handleSuccess($data, 'get all success');
+        return $this->handleSuccess($data, 'success');
     }
 
     public function update(Request $request, Post $post)
@@ -111,7 +118,6 @@ class PostController extends ResponseApiController
             $post->postMeta->link = $imageUrl;
         }
 
-        $post->Category()->detach();
         $post->postMeta->slug = $slug;
         $post->user_id = $user;
         $post->name = $request->name;
@@ -119,8 +125,7 @@ class PostController extends ResponseApiController
         $post->type = $request->type;
         $post->description = $request->description;
         $post->postMeta->post_id = $post->id;
-        $post->Category()->attach($category_ids);
-
+        $post->Category()->sync($category_ids);
         $post->save();
         $post->postMeta->save();
         $data =  $post->load('category', 'postMeta');
@@ -135,8 +140,8 @@ class PostController extends ResponseApiController
         if ($path) {
             Storage::delete($path);
         }
+        $post->forceDelete();
 
-        $post->delete();
         return $this->handleSuccess([], 'delete success');
     }
 }
