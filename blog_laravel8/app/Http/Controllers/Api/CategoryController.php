@@ -14,12 +14,32 @@ use Illuminate\Support\Facades\Auth;
 class CategoryController extends ResponseApiController
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        $category = Category::all()->where('status', '1');
+        $status = $request->search('status');
+        $layout_status = ['0', '1'];
+        $sort = $request->search('sort');
+        $sort_types = ['desc', 'asc'];
+        $sort_option = ['name', 'created_at', 'updated_at'];
+        $sort_by = $request->search('sort_by');
+        $status = in_array($status, $layout_status) ? $status : '1';
+        $sort = in_array($sort, $sort_types) ? $sort : 'desc';
+        $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
+        $search = $request->search('query');
+        $limit = request()->search('limit') ?? config('app.paginate');
 
-        return $this->handleSuccess($category, 'get all success');
+        $query = Category::select('*');
+
+        if ($status) {
+            $query = $query->where('status', $status);
+        }
+        if ($search) {
+            $query = $query->where('name', 'LIKE', '%' . $search . '%');
+        }
+        $categories = $query->orderBy($sort_by, $sort)->paginate($limit);
+        return $this->handleResponse($categories, 'Categories data');
     }
+
     public function store(Request $request)
     {
 
@@ -42,6 +62,12 @@ class CategoryController extends ResponseApiController
         $slug =  Str::slug($request->name);
         $user = Auth::id();
         $category = new Category;
+        $image = $request->image;
+        $title = Str::random(10);
+        $slug =  Str::slug($request->name);
+        $user = Auth::id();
+        $category = new Category;
+        $post_ids = $request->post_ids;
 
         if ($image) {
             $dirUpload = 'public/upload/category/' . date('Y/m/d');
@@ -59,6 +85,7 @@ class CategoryController extends ResponseApiController
         $category->status = $request->status;
         $category->type = $request->type;
         $category->description = $request->description;
+        $category->post()->sync($post_ids);
         $category->save();
 
         return $this->handleSuccess($category, 'save success');
@@ -116,16 +143,54 @@ class CategoryController extends ResponseApiController
 
         return $this->handleSuccess($category, 'update success');
     }
-    public function destroy(Category $category)
+    public function restore(Request $request)
     {
+        $request->validate([
+            'ids' => 'required',
+        ]);
 
-        $path = str_replace(url('/') . '/storage', 'public', $category->link);
+        $ids = $request->category('ids');
+        $ids = is_array($ids) ? $ids : [$ids];
+        Category::onlyTrashed()->whereIn('id', $ids)->restore();
 
-        if ($path) {
-            Storage::delete($path);
+        foreach ($ids as $id) {
+            $category = Category::find($id);
+            $category->status = '1';
+            $category->save();
         }
 
-        $category->forceDelete();
-        return $this->handleSuccess([], 'delete success');
+        return $this->handleSuccess([], 'Category restored successfully!');
+    }
+
+    public function destroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required',
+            'type' => 'required|in:delete,force_delete',
+        ]);
+
+        $ids = $request->delete('ids');
+        $type = $request->delete('type');
+        $ids = is_array($ids) ? $ids : [$ids];
+        $categories = Category::withTrashed()->whereIn('id', $ids)->get();
+
+        foreach ($categories as $category) {
+            $category->status = '0';
+            $category->save();
+            if ($type === 'force_delete') {
+                if ($category->url) {
+                    $path = 'public' . Str::after($category->url, 'storage');
+                    Storage::delete($path);
+                }
+                $category->forceDelete();
+            } else {
+                $category->delete();
+            }
+        }
+        if ($type === 'force_delete') {
+            return $this->handleSuccess([], 'Category force delete successfully!');
+        } else {
+            return $this->handleSuccess([], 'Category delete successfully!');
+        }
     }
 }

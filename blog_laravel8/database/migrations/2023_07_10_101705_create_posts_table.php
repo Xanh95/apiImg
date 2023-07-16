@@ -18,6 +18,8 @@ class CreatePostsTable extends Migration
             $table->string('name');
             $table->integer('user_id');
             $table->text('description');
+            $table->text('slug');
+            $table->softDeletes();
             $table->text('status');
             $table->text('type');
             $table->timestamps();

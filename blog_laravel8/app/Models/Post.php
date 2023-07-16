@@ -21,6 +21,6 @@ class Post extends Model
     }
     public function postMeta()
     {
-        return $this->hasOne(PostMeta::class);
+        return $this->hasMany(PostMeta::class);
     }
 }

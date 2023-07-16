@@ -20,6 +20,7 @@ class CreateCategoriesTable extends Migration
             $table->integer('user_id');
             $table->text('link')->nullable();
             $table->enum('status', ['1', '0'])->default('1');
+            $table->softDeletes();
             $table->text('description');
             $table->text('type');
             $table->timestamps();

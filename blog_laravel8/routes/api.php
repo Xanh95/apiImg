@@ -28,8 +28,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/get/postInCategory/{category}', [App\Http\Controllers\Api\PostController::class, 'postInCategory']);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store']);
     Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit']);
-    Route::post('/edit/post{post}', [App\Http\Controllers\Api\PostController::class, 'update']);
-    Route::delete('/delete/{post}', [App\Http\Controllers\Api\PostController::class, 'destroy']);
+    Route::post('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'update']);
+    Route::delete('/delete/post/{post}', [App\Http\Controllers\Api\PostController::class, 'destroy']);
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store']);
     Route::get('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'edit']);

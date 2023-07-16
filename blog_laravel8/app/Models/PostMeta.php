@@ -9,9 +9,8 @@ class PostMeta extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'post_id',
-        'link',
-        'slug'
+        'meta_key',
+        'meta_value',
     ];
     function post()
     {
