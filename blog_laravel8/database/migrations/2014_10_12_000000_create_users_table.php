@@ -18,6 +18,7 @@ class CreateUsersTable extends Migration
             $table->string('name');
             $table->text('role');
             $table->text('token');
+            $table->string('pin');
             $table->enum('status', ['active', 'inactive'])->default('inactive');
             $table->text('avatar');
             $table->string('email')->unique();

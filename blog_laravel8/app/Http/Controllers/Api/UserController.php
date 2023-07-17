@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Auth\Events\Registered;
-
+use App\Mail\VerifyPin;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 
 
@@ -26,9 +28,11 @@ class UserController extends ResponseApiController
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
 
-
         $user = new User;
         $image = $request->image;
+        $pin = random_int(100000, 999999);
+
+
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
             $title =  Str::random(10);
@@ -44,8 +48,10 @@ class UserController extends ResponseApiController
         $user->role = 'user';
         $user->name = $request->name;
         $user->password = Hash::make($request->password);
+        $user->pin = $pin;
         $user->save();
-        event(new Registered($user));
+        // event(new Registered($user));
+        Mail::to($user->email)->send(new VerifyPin($pin));
 
         return $this->handleSuccess($user, 'success');
     }
@@ -55,7 +61,6 @@ class UserController extends ResponseApiController
             'email' => 'required|email',
             'password' => 'required|min:8',
         ]);
-
         if (Auth::attempt([
             'email' => $request->email,
             'password' => $request->password
@@ -213,5 +218,42 @@ class UserController extends ResponseApiController
         }
 
         return $this->handleSuccess([], 'User restored successfully!');
+    }
+
+    public function verifyPin(Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|size:6',
+        ]);
+
+        $user = User::find(Auth::id());
+        $pin = $request->pin;
+        $userPin = $user->pin;
+
+        $updatedAt = Carbon::parse($user->updated_at);
+        $twentyFourHoursAgo = Carbon::now()->subHours(24);
+        if ($updatedAt->lt($twentyFourHoursAgo)) {
+            $user->pin = '';
+            $user->save();
+            return $this->handleError("Authentication Timeout", 410);
+        }
+        if ($pin == $userPin) {
+            $user->email_verified_at = Carbon::now();
+            $user->save();
+            return $this->handleSuccess([], 'xac thuc thanh cong');
+        }
+        return $this->handleError('xac thuc that bai', 422);
+    }
+    public function resendPin()
+    {
+
+        $user = User::find(Auth::id());
+        $pin = random_int(100000, 999999);
+
+        $user->pin = $pin;
+        $user->save();
+        Mail::to($user->email)->send(new VerifyPin($pin));
+
+        return $this->handleSuccess([], 'resend pin success');
     }
 }

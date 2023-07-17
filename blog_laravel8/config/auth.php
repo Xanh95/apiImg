@@ -112,4 +112,9 @@ return [
 
     'password_timeout' => 10800,
 
+    // time verify register email
+    'verification' => [
+        'expire' => 1440
+    ],
+
 ];

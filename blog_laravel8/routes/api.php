@@ -32,8 +32,11 @@ Route::post('/email/verify/resend', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
     return back()->with('message', 'Verification link sent!');
 })->middleware(['auth:api', 'throttle:6,1'])->name('verification.send');
-
-Route::middleware('auth:api')->group(function () {
+// verify email with pin
+Route::post('/verifyPin', [App\Http\Controllers\Api\UserController::class, 'verifyPin'])->middleware('auth:api');
+// resend link to verify email with pin
+Route::post('/resendPin', [App\Http\Controllers\Api\UserController::class, 'resendPin'])->middleware('auth:api');
+Route::middleware('auth:api', 'verified')->group(function () {
     // user
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
     Route::post('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'update']);
