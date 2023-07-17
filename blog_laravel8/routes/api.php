@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\VerifyEmailController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,18 +15,31 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
 
 Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'register']);
 Route::post('/login', [App\Http\Controllers\Api\UserController::class, 'login']);
+
+// verify email
+Route::get('/email/verify/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
+// Resend link to verify email
+Route::post('/email/verify/resend', function (Request $request) {
+    $request->user()->sendEmailVerificationNotification();
+    return back()->with('message', 'Verification link sent!');
+})->middleware(['auth:api', 'throttle:6,1'])->name('verification.send');
 
 Route::middleware('auth:api')->group(function () {
     // user
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
     Route::post('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'update']);
-    Route::post('/delete/user', [App\Http\Controllers\Api\UserController::class, 'update']);
+    Route::get('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'edit']);
+    Route::post('/delete/user', [App\Http\Controllers\Api\UserController::class, 'destroy']);
+    Route::post('/restore/user', [App\Http\Controllers\Api\UserController::class, 'restore']);
     // post
     Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index']);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store']);

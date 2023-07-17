@@ -20,7 +20,7 @@ class CreatePostsTable extends Migration
             $table->text('description');
             $table->text('slug');
             $table->softDeletes();
-            $table->text('status');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->text('type');
             $table->timestamps();
         });

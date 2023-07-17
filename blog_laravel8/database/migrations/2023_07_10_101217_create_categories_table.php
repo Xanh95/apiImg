@@ -19,7 +19,7 @@ class CreateCategoriesTable extends Migration
             $table->string('slug');
             $table->integer('user_id');
             $table->text('link')->nullable();
-            $table->enum('status', ['1', '0'])->default('1');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->softDeletes();
             $table->text('description');
             $table->text('type');

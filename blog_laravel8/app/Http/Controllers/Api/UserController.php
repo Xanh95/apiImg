@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use Illuminate\Support\Str;
-use App\Http\Requests\ApiLoginrequest;
 use Illuminate\Http\Request;
-use App\Http\Requests\Apirequest;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Psy\TabCompletion\Matcher\FunctionsMatcher;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Auth\Events\Registered;
+
+
 
 
 class UserController extends ResponseApiController
@@ -26,10 +26,9 @@ class UserController extends ResponseApiController
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
 
-        $user = new User;
-        $role = 'user';
-        $image = $request->image;
 
+        $user = new User;
+        $image = $request->image;
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
             $title =  Str::random(10);
@@ -42,11 +41,11 @@ class UserController extends ResponseApiController
             $user->avatar = $imageUrl;
         }
         $user->email = $request->email;
-        $user->role = $role;
-        $user->password = $request->password;
+        $user->role = 'user';
         $user->name = $request->name;
         $user->password = Hash::make($request->password);
         $user->save();
+        event(new Registered($user));
 
         return $this->handleSuccess($user, 'success');
     }
@@ -114,6 +113,12 @@ class UserController extends ResponseApiController
         return $this->handleSuccess($user, 'success');
     }
 
+    public function edit(User $user)
+    {
+        $data = $user;
+
+        return $this->handleSuccess($data, 'success');
+    }
     public function update(Request $request, User $user)
     {
         $request->validate([
@@ -176,7 +181,6 @@ class UserController extends ResponseApiController
             $user->save();
             if ($type === 'force_delete') {
                 $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
-                dd($path);
                 if ($path) {
                     Storage::delete($path);
                 }
@@ -191,5 +195,23 @@ class UserController extends ResponseApiController
         } else {
             return $this->handleSuccess([], 'Post delete successfully!');
         }
+    }
+    public function restore(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required',
+        ]);
+
+        $ids = $request->input('ids');
+
+        $ids = is_array($ids) ? $ids : [$ids];
+        User::onlyTrashed()->whereIn('id', $ids)->restore();
+        foreach ($ids as $id) {
+            $post = User::find($id);
+            $post->status = 'active';
+            $post->save();
+        }
+
+        return $this->handleSuccess([], 'User restored successfully!');
     }
 }
