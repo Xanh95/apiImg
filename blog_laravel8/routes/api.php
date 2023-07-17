@@ -22,19 +22,23 @@ Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'regis
 Route::post('/login', [App\Http\Controllers\Api\UserController::class, 'login']);
 
 Route::middleware('auth:api')->group(function () {
-    // get user
+    // user
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
+    Route::post('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'update']);
+    Route::post('/delete/user', [App\Http\Controllers\Api\UserController::class, 'update']);
     // post
-    Route::get('/get/postInCategory/{category}', [App\Http\Controllers\Api\PostController::class, 'postInCategory']);
+    Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index']);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store']);
     Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit']);
     Route::post('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'update']);
-    Route::delete('/delete/post/{post}', [App\Http\Controllers\Api\PostController::class, 'destroy']);
+    Route::post('/delete/post', [App\Http\Controllers\Api\PostController::class, 'destroy']);
+    Route::post('/restore/post', [App\Http\Controllers\Api\PostController::class, 'restore']);
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store']);
     Route::get('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'edit']);
     Route::post('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'update']);
-    Route::delete('delete/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'destroy']);
+    Route::post('delete/category', [App\Http\Controllers\Api\CategoryController::class, 'destroy']);
+    Route::post('restore/category', [App\Http\Controllers\Api\CategoryController::class, 'restore']);
     Route::get('/category', [App\Http\Controllers\Api\CategoryController::class, 'index']);
     // photo
     Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);

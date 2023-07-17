@@ -17,17 +17,17 @@ class PostController extends ResponseApiController
 
     public function index(Request $request)
     {
-        $status = $request->search('status');
-        $layout_status = ['0', '1'];
-        $sort = $request->search('sort');
+        $status = $request->input('status');
+        $layout_status = ['inactive', 'active'];
+        $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
-        $sort_option = ['title', 'created_at', 'updated_at'];
-        $sort_by = $request->search('sort_by');
-        $status = in_array($status, $layout_status) ? $status : '1';
+        $sort_option = ['name', 'created_at', 'updated_at'];
+        $sort_by = $request->input('sort_by');
+        $status = in_array($status, $layout_status) ? $status : 'active';
         $sort = in_array($sort, $sort_types) ? $sort : 'desc';
         $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
-        $search = $request->search('query');
-        $limit = request()->search('limit') ?? config('app.paginate');
+        $search = $request->input('query');
+        $limit = request()->input('limit') ?? config('app.paginate');
 
         $query = Post::select('*');
 
@@ -35,7 +35,7 @@ class PostController extends ResponseApiController
             $query = $query->where('status', $status);
         }
         if ($search) {
-            $query = $query->where('title', 'LIKE', '%' . $search . '%');
+            $query = $query->where('name', 'LIKE', '%' . $search . '%');
         }
         $posts = $query->orderBy($sort_by, $sort)->paginate($limit);
 
@@ -47,7 +47,7 @@ class PostController extends ResponseApiController
 
         $request->validate([
             'name' => 'required',
-            'status' => 'required|numeric',
+            'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
             'post_metas.image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
@@ -55,7 +55,7 @@ class PostController extends ResponseApiController
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
-            'status.numeric' => 'A status is numeric',
+            'status.string' => 'A status is string',
             'description.required' => 'A status is required',
             'type.required' => 'A type is required',
         ]);
@@ -109,16 +109,18 @@ class PostController extends ResponseApiController
     }
     public function edit(Post $post)
     {
-        $data = $post->load(['category', 'postMeta']);
+        $post->categories = $post->category()->where('status', 'active')->pluck('name');
+        $post->post_meta = $post->postMeta()->get();
 
-        return $this->handleSuccess($data, 'success');
+        return $this->handleSuccess($post, 'success');
     }
 
     public function update(Request $request, Post $post)
     {
+
         $request->validate([
             'name' => 'required',
-            'status' => 'required|numeric',
+            'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
             'post_metas.image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
@@ -126,7 +128,7 @@ class PostController extends ResponseApiController
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
-            'status.numeric' => 'A status is numeric',
+            'status.string' => 'A status is string',
             'description.required' => 'A status is required',
             'type.required' => 'A type is required',
         ]);
@@ -153,16 +155,18 @@ class PostController extends ResponseApiController
                     Storage::makeDirectory($dirUpload, 0755, true);
                 }
                 $oldImg = $post->postMeta->where('meta_key', 'image');
-                $path = str_replace(url('/') . '/storage', 'public', $oldImg->meta_value);
-                if ($path) {
-                    Storage::delete($path);
+                if (!$oldImg->isEmpty()) {
+                    $path = str_replace(url('/') . '/storage', 'public', $oldImg->first()->meta_value);
+                    if ($path) {
+                        Storage::delete($path);
+                    }
+                    $oldImg->first()->forceDelete();
                 }
-                $oldImg->forceDelete();
                 $imageName = $title . '.' . $image->extension();
                 $image->storeAs($dirUpload, $imageName);
                 $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             }
-            $post->postMeta->whereNot('meta_key', 'image')->forceDelete();
+            $post->postMeta()->delete();
             $post_meta->meta_key = 'image';
             $post_meta->meta_value = $imageUrl;
             $post_meta->post_id = $post->id;
@@ -189,13 +193,13 @@ class PostController extends ResponseApiController
             'ids' => 'required',
         ]);
 
-        $ids = $request->restore('ids');
+        $ids = $request->input('ids');
 
         $ids = is_array($ids) ? $ids : [$ids];
         Post::onlyTrashed()->whereIn('id', $ids)->restore();
         foreach ($ids as $id) {
             $post = Post::find($id);
-            $post->status = '1';
+            $post->status = 'active';
             $post->save();
         }
 
@@ -209,13 +213,13 @@ class PostController extends ResponseApiController
             'type' => 'required|in:delete,force_delete',
         ]);
 
-        $ids = $request->delete('ids');
-        $type = $request->delete('type');
+        $ids = $request->input('ids');
+        $type = $request->input('type');
         $ids = is_array($ids) ? $ids : [$ids];
         $posts = Post::withTrashed()->whereIn('id', $ids)->get();
 
         foreach ($posts as $post) {
-            $post->status = '1';
+            $post->status = 'inactive';
             $post->save();
             if ($type === 'force_delete') {
                 $post_metas = $post->postMeta()->get();
@@ -233,9 +237,9 @@ class PostController extends ResponseApiController
         }
 
         if ($type === 'force_delete') {
-            return $this->handleResponse([], 'Post force delete successfully!');
+            return $this->handleSuccess([], 'Post force delete successfully!');
         } else {
-            return $this->handleResponse([], 'Post delete successfully!');
+            return $this->handleSuccess([], 'Post delete successfully!');
         }
     }
 }

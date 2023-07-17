@@ -16,17 +16,17 @@ class CategoryController extends ResponseApiController
 
     public function index(Request $request)
     {
-        $status = $request->search('status');
-        $layout_status = ['0', '1'];
-        $sort = $request->search('sort');
+        $status = $request->input('status');
+        $layout_status = ['inactive', 'active'];
+        $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
         $sort_option = ['name', 'created_at', 'updated_at'];
-        $sort_by = $request->search('sort_by');
-        $status = in_array($status, $layout_status) ? $status : '1';
+        $sort_by = $request->input('sort_by');
+        $status = in_array($status, $layout_status) ? $status : 'active';
         $sort = in_array($sort, $sort_types) ? $sort : 'desc';
         $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
-        $search = $request->search('query');
-        $limit = request()->search('limit') ?? config('app.paginate');
+        $search = $request->input('query');
+        $limit = request()->input('limit') ?? config('app.paginate');
 
         $query = Category::select('*');
 
@@ -37,7 +37,8 @@ class CategoryController extends ResponseApiController
             $query = $query->where('name', 'LIKE', '%' . $search . '%');
         }
         $categories = $query->orderBy($sort_by, $sort)->paginate($limit);
-        return $this->handleResponse($categories, 'Categories data');
+
+        return $this->handleSuccess($categories, 'Categories data');
     }
 
     public function store(Request $request)
@@ -45,14 +46,14 @@ class CategoryController extends ResponseApiController
 
         $request->validate([
             'name' => 'required',
-            'status' => 'required|numeric',
+            'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
-            'status.numeric' => 'A status is numeric',
+            'status.string' => 'A status is string',
             'description.required' => 'A status is required',
             'type.required' => 'A type is required',
         ]);
@@ -92,25 +93,24 @@ class CategoryController extends ResponseApiController
     }
     public function edit(Category $category)
     {
-        $data = $category;
+        $category->posts = $category->posts()->where('status', 'active')->pluck('name');
 
-
-        return $this->handleSuccess($data, 'get success');
+        return $this->handleSuccess($category, 'success');
     }
 
     public function update(Request $request, Category $category)
     {
         $request->validate([
             'name' => 'required',
-            'status' => 'required|numeric',
+            'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
-            'status.numeric' => 'A status is numeric',
-            'description.numeric' => 'A status is numeric',
+            'status.string' => 'A status is string',
+            'description.string' => 'A status is string',
             'type.required' => 'A type is required',
         ]);
 
@@ -169,17 +169,17 @@ class CategoryController extends ResponseApiController
             'type' => 'required|in:delete,force_delete',
         ]);
 
-        $ids = $request->delete('ids');
-        $type = $request->delete('type');
+        $ids = $request->input('ids');
+        $type = $request->input('type');
         $ids = is_array($ids) ? $ids : [$ids];
         $categories = Category::withTrashed()->whereIn('id', $ids)->get();
 
         foreach ($categories as $category) {
-            $category->status = '0';
+            $category->status = 'inactive';
             $category->save();
             if ($type === 'force_delete') {
                 if ($category->url) {
-                    $path = 'public' . Str::after($category->url, 'storage');
+                    $path = 'public' . Str::after($category->link, 'storage');
                     Storage::delete($path);
                 }
                 $category->forceDelete();
