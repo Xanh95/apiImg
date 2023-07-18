@@ -21,7 +21,8 @@ class VerifyPin extends Mailable
 
     public function build()
     {
-        return $this->subject('Xác thực tài khoản của bạn')
+        return $this->from('Xanh@gmail.com', 'Xanh')
+            ->subject('Authentication your account')
             ->view('auth.verify_pin')
             ->with([
                 'pin' => $this->pin,

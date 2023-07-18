@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 
 
 
+
 class UserController extends ResponseApiController
 {
     //
@@ -218,42 +219,5 @@ class UserController extends ResponseApiController
         }
 
         return $this->handleSuccess([], 'User restored successfully!');
-    }
-
-    public function verifyPin(Request $request)
-    {
-        $request->validate([
-            'pin' => 'required|size:6',
-        ]);
-
-        $user = User::find(Auth::id());
-        $pin = $request->pin;
-        $userPin = $user->pin;
-
-        $updatedAt = Carbon::parse($user->updated_at);
-        $twentyFourHoursAgo = Carbon::now()->subHours(24);
-        if ($updatedAt->lt($twentyFourHoursAgo)) {
-            $user->pin = '';
-            $user->save();
-            return $this->handleError("Authentication Timeout", 410);
-        }
-        if ($pin == $userPin) {
-            $user->email_verified_at = Carbon::now();
-            $user->save();
-            return $this->handleSuccess([], 'xac thuc thanh cong');
-        }
-        return $this->handleError('xac thuc that bai', 422);
-    }
-    public function resendPin()
-    {
-
-        $user = User::find(Auth::id());
-        $pin = random_int(100000, 999999);
-
-        $user->pin = $pin;
-        $user->save();
-        Mail::to($user->email)->send(new VerifyPin($pin));
-
-        return $this->handleSuccess([], 'resend pin success');
     }
 }

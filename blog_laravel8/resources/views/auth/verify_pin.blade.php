@@ -1,1 +1,1 @@
-<p>Chào bạn, mã xác thực của bạn là: <strong>{{ $pin }}</strong></p>
+<p>Hello!, your code authentication is: <strong>{{ $pin }}</strong></p>
