@@ -148,28 +148,28 @@ class PostController extends ResponseApiController
         $post->save();
         if ($data_post_meta) {
             $post_meta = new PostMeta;
+            $oldImg = $post->postMeta->where('meta_key', 'image');
+            if (!$oldImg->isEmpty()) {
+                $path = str_replace(url('/') . '/storage', 'public', $oldImg->first()->meta_value);
+                if ($path) {
+                    Storage::delete($path);
+                }
+                $oldImg->first()->forceDelete();
+            }
+            $post->postMeta()->delete();
             if (isset($data_post_meta['image'])) {
                 $image = $data_post_meta['image'];
                 $dirUpload = 'public/upload/post/' . date('Y/m/d');
                 if (!Storage::exists($dirUpload)) {
                     Storage::makeDirectory($dirUpload, 0755, true);
                 }
-                $oldImg = $post->postMeta->where('meta_key', 'image');
-                if (!$oldImg->isEmpty()) {
-                    $path = str_replace(url('/') . '/storage', 'public', $oldImg->first()->meta_value);
-                    if ($path) {
-                        Storage::delete($path);
-                    }
-                    $oldImg->first()->forceDelete();
-                }
                 $imageName = $title . '.' . $image->extension();
                 $image->storeAs($dirUpload, $imageName);
                 $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+                $post_meta->meta_key = 'image';
+                $post_meta->meta_value = $imageUrl;
+                $post_meta->post_id = $post->id;
             }
-            $post->postMeta()->delete();
-            $post_meta->meta_key = 'image';
-            $post_meta->meta_value = $imageUrl;
-            $post_meta->post_id = $post->id;
             $post_meta->save();
 
             foreach ($data_post_meta as $key => $value) {
