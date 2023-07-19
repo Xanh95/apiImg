@@ -43,6 +43,9 @@ class CategoryController extends ResponseApiController
 
     public function store(Request $request)
     {
+        if (!$request->user()->hasPermission('create')) {
+            abort(403, 'Unauthorized');
+        }
 
         $request->validate([
             'name' => 'required',
@@ -91,8 +94,9 @@ class CategoryController extends ResponseApiController
 
         return $this->handleSuccess($category, 'save success');
     }
-    public function edit(Category $category)
+    public function edit(Category $category, Request $request)
     {
+
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
 
         return $this->handleSuccess($category, 'success');
@@ -100,6 +104,10 @@ class CategoryController extends ResponseApiController
 
     public function update(Request $request, Category $category)
     {
+        if (!$request->user()->hasPermission('update')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'name' => 'required',
             'status' => 'required|string',
@@ -145,6 +153,10 @@ class CategoryController extends ResponseApiController
     }
     public function restore(Request $request)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
         ]);
@@ -164,6 +176,10 @@ class CategoryController extends ResponseApiController
 
     public function destroy(Request $request)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
             'type' => 'required|in:delete,force_delete',
@@ -192,13 +208,5 @@ class CategoryController extends ResponseApiController
         } else {
             return $this->handleSuccess([], 'Category delete successfully!');
         }
-    }
-    public function test(Request $request)
-    {
-
-        if ($request->user()->cannot('update', Post::class)) {
-            abort(403, 'Unauthorized');
-        }
-        return 'ngoaiif';
     }
 }

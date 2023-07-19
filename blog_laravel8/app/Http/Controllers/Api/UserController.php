@@ -85,7 +85,7 @@ class UserController extends ResponseApiController
     }
     public function create(Request $request)
     {
-        if ($request->user()->cannot('create', User::class)) {
+        if (!$request->user()->hasPermission('create')) {
             abort(403, 'Unauthorized');
         }
 
@@ -147,7 +147,7 @@ class UserController extends ResponseApiController
     }
     public function update(Request $request, User $user)
     {
-        if ($request->user()->cannot('update', User::class) || (Auth::id() != $user->id)) {
+        if (!$request->user()->hasPermission('update')) {
             abort(403, 'Unauthorized');
         }
 
@@ -199,7 +199,7 @@ class UserController extends ResponseApiController
 
     public function destroy(Request $request)
     {
-        if ($request->user()->cannot('delete', User::class)) {
+        if (!$request->user()->hasPermission('delete')) {
             abort(403, 'Unauthorized');
         }
 

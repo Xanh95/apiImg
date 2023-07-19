@@ -39,9 +39,6 @@ Route::post('/verifyPin', [App\Http\Controllers\VerifyEmailController::class, 'v
 Route::post('/resendPin', [App\Http\Controllers\VerifyEmailController::class, 'resendPin'])->middleware('auth:api');
 
 Route::middleware('auth:api', 'verified')->group(function () {
-    // test
-    Route::post('/test', [App\Http\Controllers\Api\CategoryController::class, 'test'])->can('update', Category::class);
-
     // user
     Route::get('/user/all', [App\Http\Controllers\Api\UserController::class, 'index'])->can('update', 'user');
     Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo'])->can('view', 'user');

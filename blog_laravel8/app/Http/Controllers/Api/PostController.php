@@ -44,6 +44,9 @@ class PostController extends ResponseApiController
 
     public function store(Request $request)
     {
+        if (!$request->user()->hasPermission('create')) {
+            abort(403, 'Unauthorized');
+        }
 
         $request->validate([
             'name' => 'required',
@@ -107,8 +110,12 @@ class PostController extends ResponseApiController
 
         return $this->handleSuccess($post, 'save success');
     }
-    public function edit(Post $post)
+    public function edit(Request $request, Post $post)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $post->categories = $post->category()->where('status', 'active')->pluck('name');
         $post->post_meta = $post->postMeta()->get();
 
@@ -117,6 +124,9 @@ class PostController extends ResponseApiController
 
     public function update(Request $request, Post $post)
     {
+        if (!$request->user()->hasPermission('update')) {
+            abort(403, 'Unauthorized');
+        }
 
         $request->validate([
             'name' => 'required',
@@ -189,6 +199,10 @@ class PostController extends ResponseApiController
     }
     public function restore(Request $request)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
         ]);
@@ -208,6 +222,10 @@ class PostController extends ResponseApiController
 
     public function destroy(Request $request)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
             'type' => 'required|in:delete,force_delete',
