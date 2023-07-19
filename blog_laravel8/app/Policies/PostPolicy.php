@@ -4,11 +4,12 @@ namespace App\Policies;
 
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Traits\HasPermissionsTrait;
 
 
-class UserPolicy
+class PostPolicy
 {
-    use HandlesAuthorization;
+    use HandlesAuthorization, HasPermissionsTrait;
 
     public function before(User $user)
     {
@@ -22,16 +23,11 @@ class UserPolicy
         return $user->hasRole('edit');
     }
 
-    public function update(User $user, User $targetUser)
+    public function update(User $user)
     {
 
-        return $user->id === $targetUser->id || $user->hasRole('edit');
+        return $user->hasRole('edit');
     }
-    public function view(User $user, User $targetUser)
-    {
-        return $user->hasRole('edit') || $user->id === $targetUser->id;
-    }
-
 
     public function delete(User $user)
     {

@@ -13,6 +13,8 @@ use Illuminate\Auth\Events\Registered;
 use App\Mail\VerifyPin;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Role;
+
 
 
 
@@ -46,12 +48,13 @@ class UserController extends ResponseApiController
             $user->avatar = $imageUrl;
         }
         $user->email = $request->email;
-        $user->role = 'user';
         $user->name = $request->name;
         $user->password = Hash::make($request->password);
         $user->pin = $pin;
         $user->save();
+        $user->roles()->sync(2);
         // event(new Registered($user));
+
         Mail::to($user->email)->send(new VerifyPin($pin));
 
         return $this->handleSuccess($user, 'success');
@@ -82,19 +85,25 @@ class UserController extends ResponseApiController
     }
     public function create(Request $request)
     {
+        if ($request->user()->cannot('create', User::class)) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8',
             'name' => 'required|max:150',
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
-
         $user = new User;
-        $role = $request->role ?? 'user';
+        $role = $request->role ?? 2;
         $image = $request->image;
         $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
 
 
+        if (!$request->user()->hasRole('admin') && $role = 1) {
+            abort(403, 'Unauthorized');
+        }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
             $title =  Str::random(10);
@@ -110,23 +119,38 @@ class UserController extends ResponseApiController
             $user->avatar = $imageUrl;
         }
         $user->email = $request->email;
-        $user->role = $role;
         $user->password = $request->password;
         $user->name = $request->name;
         $user->password = Hash::make($request->password);
+        $user->email_verified_at = Carbon::now();
+        $user->status = 'active';
         $user->save();
+        $user->roles()->sync($role);
 
         return $this->handleSuccess($user, 'success');
     }
-
-    public function edit(User $user)
+    public function index()
     {
+        $data = User::latest()->paginate(10);
+
+        return $this->handleSuccess($data, 'get data user success');
+    }
+    public function edit(Request $request, User $user)
+    {
+        if ($request->user()->cannot('update', User::class) || (Auth::id() != $user->id)) {
+            abort(403, 'Unauthorized');
+        }
+
         $data = $user;
 
         return $this->handleSuccess($data, 'success');
     }
     public function update(Request $request, User $user)
     {
+        if ($request->user()->cannot('update', User::class) || (Auth::id() != $user->id)) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'password' => 'min:8',
             'name' => 'required|max:150',
@@ -134,12 +158,15 @@ class UserController extends ResponseApiController
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
 
-        $role = $request->role ?? 'user';
+        $role = $request->role ?? 2;
         $image = $request->image;
         $password = $request->password;
         $name = $request->name;
         $email = $request->email;
 
+        if (!$request->user()->hasRole('admin') && $role = 1) {
+            abort(403, 'Unauthorized');
+        }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
             $title =  Str::random(10);
@@ -172,6 +199,10 @@ class UserController extends ResponseApiController
 
     public function destroy(Request $request)
     {
+        if ($request->user()->cannot('delete', User::class)) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
             'type' => 'required|in:delete,force_delete',
@@ -204,6 +235,10 @@ class UserController extends ResponseApiController
     }
     public function restore(Request $request)
     {
+        if (!$request->user()->hasPermission('delete')) {
+            abort(403, 'Unauthorized');
+        }
+
         $request->validate([
             'ids' => 'required',
         ]);
@@ -219,5 +254,14 @@ class UserController extends ResponseApiController
         }
 
         return $this->handleSuccess([], 'User restored successfully!');
+    }
+
+    public function test(Request $request)
+    {
+
+        if ($request->user()->cannot('delete', User::class)) {
+            abort(403, 'Unauthorized');
+        }
+        return 'ngoaiif';
     }
 }

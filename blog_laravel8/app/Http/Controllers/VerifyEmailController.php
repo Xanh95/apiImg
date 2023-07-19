@@ -64,7 +64,6 @@ class VerifyEmailController extends ResponseApiController
         $updatedAt = Carbon::parse($user->updated_at);
         $twentyFourHoursAgo = Carbon::now()->subHours(24);
         if (!($updatedAt->lt($twentyFourHoursAgo))) {
-
             return $this->handleError("PIN is still valid", 200);
         }
         $user->pin = $pin;

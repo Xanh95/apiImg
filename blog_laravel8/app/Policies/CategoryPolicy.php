@@ -2,11 +2,11 @@
 
 namespace App\Policies;
 
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-
-class UserPolicy
+class CategoryPolicy
 {
     use HandlesAuthorization;
 
@@ -22,16 +22,11 @@ class UserPolicy
         return $user->hasRole('edit');
     }
 
-    public function update(User $user, User $targetUser)
+    public function update(User $user)
     {
 
-        return $user->id === $targetUser->id || $user->hasRole('edit');
+        return $user->hasRole('edit');
     }
-    public function view(User $user, User $targetUser)
-    {
-        return $user->hasRole('edit') || $user->id === $targetUser->id;
-    }
-
 
     public function delete(User $user)
     {

@@ -8,12 +8,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\HasPermissionsTrait;
+
 
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasPermissionsTrait;
     use SoftDeletes;
+
 
     /**
      * The attributes that are mass assignable.
@@ -25,6 +28,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
     ];
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

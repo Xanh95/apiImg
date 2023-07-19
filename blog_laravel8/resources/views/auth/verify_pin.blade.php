@@ -1,1 +1,4 @@
-<p>Hello!, your code authentication is: <strong>{{ $pin }}</strong></p>
+@extends('layouts.email')
+@section('pin')
+<div align="center" class="alignment"><a href="www.example.com" style="text-decoration:none;display:inline-block;color:#ffffff;background-color:#eece5e;border-radius:13px;width:auto;border-top:0px solid #8a3b8f;font-weight:undefined;border-right:0px solid #8a3b8f;border-bottom:0px solid #8a3b8f;border-left:0px solid #8a3b8f;padding-top:5px;padding-bottom:5px;font-family:Arial, Helvetica Neue, Helvetica, sans-serif;font-size:16px;text-align:center;mso-border-alt:none;word-break:keep-all;" target="_blank"><span style="padding-left:30px;padding-right:30px;font-size:16px;display:inline-block;letter-spacing:normal;"><span style="word-break: break-word; line-height: 32px;"> {{ $pin }}</span></span></a></div>
+@endsection

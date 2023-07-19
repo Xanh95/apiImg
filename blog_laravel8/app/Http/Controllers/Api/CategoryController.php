@@ -193,4 +193,12 @@ class CategoryController extends ResponseApiController
             return $this->handleSuccess([], 'Category delete successfully!');
         }
     }
+    public function test(Request $request)
+    {
+
+        if ($request->user()->cannot('update', Post::class)) {
+            abort(403, 'Unauthorized');
+        }
+        return 'ngoaiif';
+    }
 }
