@@ -275,16 +275,22 @@ class UserController extends ResponseApiController
         ]);
 
         $favorites = $request->favorite;
+        $user_meta = $request->user()->userMeta();
+        if ($user_meta->where('meta_key', 'favorite_post')->exists()) {
+            $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
+            $favorited = explode('-', $user_meta->meta_value);
+            $favorite = array_unique(array_merge($favorited, $favorites));
+            $user_meta->meta_value = implode('-', $favorite);
+            $user_meta->save();
 
-        foreach ($favorites as $favorite) {
-            if (!$request->user()->userMeta()->where('meta_key', 'favorite_post')->where('meta_value', $favorite)->exists()) {
-                $user_meta = new UserMeta;
-                $user_meta->meta_key = 'favorite_post';
-                $user_meta->meta_value = $favorite;
-                $user_meta->user_id = Auth::id();
-                $user_meta->save();
-            }
+            return $this->handleSuccess([], 'favorite success');
         }
+        $user_meta = new UserMeta;
+        $user_meta->meta_key = 'favorite_post';
+        $user_meta->meta_value = implode('-', $favorites);
+        $user_meta->user_id = Auth::id();
+        $user_meta->save();
+
         return $this->handleSuccess([], 'favorite success');
     }
     public function subFavorite(Request $request)
@@ -298,20 +304,23 @@ class UserController extends ResponseApiController
         ]);
 
         $post_ids = $request->post_id;
+        $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
 
-        $user = $request->user();
-        foreach ($post_ids as $post_id) {
-            $data = $user->userMeta()->where('meta_key', 'favorite_post')->where('meta_value', $post_id)->delete();
-        }
-        return $this->handleSuccess($data, 'subfavorite success');
+        $favorited = explode('-', $user_meta->meta_value);
+        $favorite = array_diff($favorited, $post_ids);
+        $user_meta->meta_value = implode('-', $favorite);
+
+        $user_meta->save();
+
+        return $this->handleSuccess($user_meta, 'subfavorite success');
     }
     public function showFavorite(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
             $this->handleError('Unauthorized', 403);
         }
-
-        $post_id = $request->user()->userMeta()->where('meta_key', 'favorite_post')->pluck('meta_value');
+        $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
+        $post_id = explode('-', $user_meta->meta_value);
 
         $data = Post::find($post_id);
         return $this->handleSuccess($data, 'get success');

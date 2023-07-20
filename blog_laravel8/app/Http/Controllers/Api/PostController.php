@@ -256,7 +256,17 @@ class PostController extends ResponseApiController
                         Storage::delete($path);
                     }
                 }
-                UserMeta::where('meta_value', $ids)->delete();
+                foreach ($ids as $id) {
+                    $user_metas = UserMeta::where('meta_key', 'favorite_post')
+                        ->where('meta_value', 'LIKE', "%$id%")
+                        ->get();
+                    foreach ($user_metas as $user_meta) {
+                        $post_ids = explode('-', $user_meta->meta_value);
+                        $post_ids = array_diff($post_ids, [$id]);
+                        $user_meta->meta_value = implode('-', $post_ids);
+                        $user_meta->save();
+                    }
+                }
                 $post->forceDelete();
             } else {
                 $post->delete();
