@@ -32,6 +32,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsToMany(Role::class);
     }
+    public function userMeta()
+    {
+        return $this->hasMany(UserMeta::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

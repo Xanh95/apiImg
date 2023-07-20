@@ -18,7 +18,8 @@ class PermissionRoleSeeder extends Seeder
         $roles = [
             ['name' => 'admin'],
             ['name' => 'user'],
-            ['name' => 'edit'],
+            ['name' => 'editor'],
+            ['name' => 'customer'],
         ];
         DB::table('roles')->insert($roles);
 
@@ -39,6 +40,7 @@ class PermissionRoleSeeder extends Seeder
             ['role_id' => 3, 'permission_id' => 1],
             ['role_id' => 3, 'permission_id' => 2],
             ['role_id' => 3, 'permission_id' => 3],
+            ['role_id' => 4, 'permission_id' => 1],
         ];
         DB::table('permission_role')->insert($rolePermissions);
     }

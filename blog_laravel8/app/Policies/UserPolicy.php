@@ -19,22 +19,26 @@ class UserPolicy
 
     public function create(User $user)
     {
-        return $user->hasRole('edit');
+        return $user->hasPermission('create');
+    }
+
+    public function viewAny(User $user)
+    {
+        return $user->hasPermission('update');
     }
 
     public function update(User $user, User $targetUser)
     {
-
-        return $user->id === $targetUser->id || $user->hasRole('edit');
+        return $user->id === $targetUser->id || $user->hasPermission('update');
     }
 
-    public function view(User $user, User $targetUser)
+    public function view(User $user)
     {
-        return $user->hasRole('edit') || $user->id === $targetUser->id;
+        return $user->hasPermission('view');
     }
-
 
     public function delete(User $user)
     {
+        return $user->hasPermission('delete');
     }
 }

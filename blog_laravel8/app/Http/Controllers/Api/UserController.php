@@ -14,10 +14,8 @@ use App\Mail\VerifyPin;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Role;
-
-
-
-
+use App\Models\UserMeta;
+use App\Models\Post;
 
 class UserController extends ResponseApiController
 {
@@ -86,7 +84,7 @@ class UserController extends ResponseApiController
     public function create(Request $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -101,8 +99,10 @@ class UserController extends ResponseApiController
         $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
 
 
-        if (!$request->user()->hasRole('admin') && $role = 1) {
-            abort(403, 'Unauthorized');
+        if (!$request->user()->hasRole('admin')) {
+            if ($role == 1) {
+                $this->handleError('Unauthorized', 403);
+            }
         }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
@@ -132,7 +132,7 @@ class UserController extends ResponseApiController
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('update')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $data = User::latest()->paginate(10);
@@ -142,7 +142,7 @@ class UserController extends ResponseApiController
     public function edit(Request $request, User $user)
     {
         if (!$request->user()->hasPermission('update') && (Auth::id() != $user->id)) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $data = $user;
@@ -152,10 +152,11 @@ class UserController extends ResponseApiController
     public function update(Request $request, User $user)
     {
         if (!$request->user()->hasPermission('update')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
+            'email' => 'email|unique:users',
             'password' => 'min:8',
             'name' => 'required|max:150',
             'role' => 'required',
@@ -168,8 +169,10 @@ class UserController extends ResponseApiController
         $name = $request->name;
         $email = $request->email;
 
-        if (!$request->user()->hasRole('admin') && $role = 1) {
-            abort(403, 'Unauthorized');
+        if (!$request->user()->hasRole('admin')) {
+            if ($role == 1) {
+                $this->handleError('Unauthorized', 403);
+            }
         }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
@@ -193,7 +196,7 @@ class UserController extends ResponseApiController
             $user->email = $email;
         }
         if ($role) {
-            $user->role = $role;
+            $user->roles()->sync($role);
         }
         $user->name = $name;
         $user->save();
@@ -205,7 +208,7 @@ class UserController extends ResponseApiController
     public function destroy(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -241,7 +244,7 @@ class UserController extends ResponseApiController
     public function restore(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -259,5 +262,58 @@ class UserController extends ResponseApiController
         }
 
         return $this->handleSuccess([], 'User restored successfully!');
+    }
+
+    public function addFavorite(Request $request)
+    {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
+
+        $request->validate([
+            'favorite' => 'required|array',
+        ]);
+
+        $favorites = $request->favorite;
+
+        foreach ($favorites as $favorite) {
+            if (!$request->user()->userMeta()->where('meta_key', 'favorite_post')->where('meta_value', $favorite)->exists()) {
+                $user_meta = new UserMeta;
+                $user_meta->meta_key = 'favorite_post';
+                $user_meta->meta_value = $favorite;
+                $user_meta->user_id = Auth::id();
+                $user_meta->save();
+            }
+        }
+        return $this->handleSuccess([], 'favorite success');
+    }
+    public function subFavorite(Request $request)
+    {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
+
+        $request->validate([
+            'post_id' => 'required|array',
+        ]);
+
+        $post_ids = $request->post_id;
+
+        $user = $request->user();
+        foreach ($post_ids as $post_id) {
+            $data = $user->userMeta()->where('meta_key', 'favorite_post')->where('meta_value', $post_id)->delete();
+        }
+        return $this->handleSuccess($data, 'subfavorite success');
+    }
+    public function showFavorite(Request $request)
+    {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
+
+        $post_id = $request->user()->userMeta()->where('meta_key', 'favorite_post')->pluck('meta_value');
+
+        $data = Post::find($post_id);
+        return $this->handleSuccess($data, 'get success');
     }
 }

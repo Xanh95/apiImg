@@ -16,6 +16,10 @@ class CategoryController extends ResponseApiController
 
     public function index(Request $request)
     {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
+
         $status = $request->input('status');
         $layout_status = ['inactive', 'active'];
         $sort = $request->input('sort');
@@ -44,7 +48,7 @@ class CategoryController extends ResponseApiController
     public function store(Request $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -96,7 +100,9 @@ class CategoryController extends ResponseApiController
     }
     public function edit(Category $category, Request $request)
     {
-
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
 
         return $this->handleSuccess($category, 'success');
@@ -105,7 +111,7 @@ class CategoryController extends ResponseApiController
     public function update(Request $request, Category $category)
     {
         if (!$request->user()->hasPermission('update')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -144,17 +150,20 @@ class CategoryController extends ResponseApiController
         $category->slug = $slug;
         $category->user_id = $user;
         $category->name = $request->name;
-        $category->status = $request->status;
+        if ($request->user()->hasRole('admin') || $user == $category->user_id) {
+            $category->status = $request->status;
+        }
         $category->type = $request->type;
         $category->description = $request->description;
         $category->save();
 
         return $this->handleSuccess($category, 'update success');
     }
+
     public function restore(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -177,7 +186,7 @@ class CategoryController extends ResponseApiController
     public function destroy(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([

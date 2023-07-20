@@ -11,12 +11,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Models\UserMeta;
+
 
 class PostController extends ResponseApiController
 {
 
     public function index(Request $request)
     {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
+
         $status = $request->input('status');
         $layout_status = ['inactive', 'active'];
         $sort = $request->input('sort');
@@ -45,7 +51,7 @@ class PostController extends ResponseApiController
     public function store(Request $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -110,8 +116,11 @@ class PostController extends ResponseApiController
 
         return $this->handleSuccess($post, 'save success');
     }
-    public function edit(Post $post)
+    public function edit(Request $request, Post $post)
     {
+        if (!$request->user()->hasPermission('view')) {
+            $this->handleError('Unauthorized', 403);
+        }
 
         $post->categories = $post->category()->where('status', 'active')->pluck('name');
         $post->post_meta = $post->postMeta()->get();
@@ -122,7 +131,7 @@ class PostController extends ResponseApiController
     public function update(Request $request, Post $post)
     {
         if (!$request->user()->hasPermission('update')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -149,7 +158,9 @@ class PostController extends ResponseApiController
         $post->user_id = $user;
         $post->slug = $slug;
         $post->name = $request->name;
-        $post->status = $request->status;
+        if ($request->user()->hasRole('admin') || $user == $post->user_id) {
+            $post->status = $request->status;
+        }
         $post->type = $request->type;
         $post->description = $request->description;
         $post->save();
@@ -197,7 +208,7 @@ class PostController extends ResponseApiController
     public function restore(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -220,7 +231,7 @@ class PostController extends ResponseApiController
     public function destroy(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
+            $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -245,6 +256,7 @@ class PostController extends ResponseApiController
                         Storage::delete($path);
                     }
                 }
+                UserMeta::where('meta_value', $ids)->delete();
                 $post->forceDelete();
             } else {
                 $post->delete();

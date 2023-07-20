@@ -40,28 +40,31 @@ Route::post('/resendPin', [App\Http\Controllers\VerifyEmailController::class, 'r
 
 Route::middleware('auth:api', 'verified')->group(function () {
     // user
-    Route::get('/user/all', [App\Http\Controllers\Api\UserController::class, 'index'])->can('update', 'user');
-    Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo'])->can('view', 'user');
-    Route::post('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'update'])->can('update', 'user');
+    Route::get('/user/all', [App\Http\Controllers\Api\UserController::class, 'index'])->can('viewAny', User::class);
+    Route::get('/user', [App\Http\Controllers\Api\UserController::class, 'userInfo']);
     Route::post('/create/user', [App\Http\Controllers\Api\UserController::class, 'create'])->can('create', User::class);
-    Route::get('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'edit'])->can('view', 'user');
+    Route::post('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'update'])->can('update', 'user');
+    Route::get('/edit/user/{user}', [App\Http\Controllers\Api\UserController::class, 'edit'])->can('update', 'user');
     Route::post('/delete/user', [App\Http\Controllers\Api\UserController::class, 'destroy'])->can('delete', 'user');
     Route::post('/restore/user', [App\Http\Controllers\Api\UserController::class, 'restore'])->can('delete', 'user');
+    Route::post('/user/favorite', [App\Http\Controllers\Api\UserController::class, 'addFavorite'])->can('view', User::class);
+    Route::post('/user/subfavorite', [App\Http\Controllers\Api\UserController::class, 'subFavorite'])->can('view', User::class);
+    Route::get('/user/show/favorite', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
 
     // post
-    Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index']);
+    Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index'])->can('view', Post::class);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store'])->can('update', Post::class);
-    Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit']);
+    Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit'])->can('view', Post::class);
     Route::post('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'update'])->can('update', 'post');
-    Route::post('/delete/post', [App\Http\Controllers\Api\PostController::class, 'destroy'])->can('delete', 'post');
-    Route::post('/restore/post', [App\Http\Controllers\Api\PostController::class, 'restore'])->can('delete', 'post');
+    Route::post('/delete/post', [App\Http\Controllers\Api\PostController::class, 'destroy'])->can('delete', Post::class);
+    Route::post('/restore/post', [App\Http\Controllers\Api\PostController::class, 'restore'])->can('delete', Post::class);
 
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store'])->can('create', Category::class);
     Route::get('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'edit']);
     Route::post('edit/category/{category}', [App\Http\Controllers\Api\CategoryController::class, 'update'])->can('update', 'category');
-    Route::post('delete/category', [App\Http\Controllers\Api\CategoryController::class, 'destroy'])->can('delete', 'category');
-    Route::post('restore/category', [App\Http\Controllers\Api\CategoryController::class, 'restore'])->can('delete', 'category');
+    Route::post('delete/category', [App\Http\Controllers\Api\CategoryController::class, 'destroy'])->can('delete', Category::class);
+    Route::post('restore/category', [App\Http\Controllers\Api\CategoryController::class, 'restore'])->can('delete', Category::class);
     Route::get('/category', [App\Http\Controllers\Api\CategoryController::class, 'index']);
 
     // photo
