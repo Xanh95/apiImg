@@ -110,11 +110,8 @@ class PostController extends ResponseApiController
 
         return $this->handleSuccess($post, 'save success');
     }
-    public function edit(Request $request, Post $post)
+    public function edit(Post $post)
     {
-        if (!$request->user()->hasPermission('delete')) {
-            abort(403, 'Unauthorized');
-        }
 
         $post->categories = $post->category()->where('status', 'active')->pluck('name');
         $post->post_meta = $post->postMeta()->get();

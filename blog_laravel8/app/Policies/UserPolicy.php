@@ -27,6 +27,7 @@ class UserPolicy
 
         return $user->id === $targetUser->id || $user->hasRole('edit');
     }
+
     public function view(User $user, User $targetUser)
     {
         return $user->hasRole('edit') || $user->id === $targetUser->id;

@@ -75,7 +75,7 @@ class UserController extends ResponseApiController
             return $this->handleSuccess($user, 'success');
         }
 
-        return $this->handleError('wrong passsword or email', 401);
+        return $this->handleError('wrong password or email', 401);
     }
     public function userInfo(Request $request)
     {
@@ -129,15 +129,19 @@ class UserController extends ResponseApiController
 
         return $this->handleSuccess($user, 'success');
     }
-    public function index()
+    public function index(Request $request)
     {
+        if (!$request->user()->hasPermission('update')) {
+            abort(403, 'Unauthorized');
+        }
+
         $data = User::latest()->paginate(10);
 
         return $this->handleSuccess($data, 'get data user success');
     }
     public function edit(Request $request, User $user)
     {
-        if ($request->user()->cannot('update', User::class) || (Auth::id() != $user->id)) {
+        if (!$request->user()->hasPermission('update') && (Auth::id() != $user->id)) {
             abort(403, 'Unauthorized');
         }
 
@@ -158,7 +162,7 @@ class UserController extends ResponseApiController
             'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
 
-        $role = $request->role ?? 2;
+        $role = $request->role;
         $image = $request->image;
         $password = $request->password;
         $name = $request->name;
@@ -193,6 +197,7 @@ class UserController extends ResponseApiController
         }
         $user->name = $name;
         $user->save();
+        $user->roles()->sync($role);
 
         return $this->handleSuccess($user, 'update success');
     }
@@ -254,14 +259,5 @@ class UserController extends ResponseApiController
         }
 
         return $this->handleSuccess([], 'User restored successfully!');
-    }
-
-    public function test(Request $request)
-    {
-
-        if ($request->user()->cannot('delete', User::class)) {
-            abort(403, 'Unauthorized');
-        }
-        return 'ngoaiif';
     }
 }
