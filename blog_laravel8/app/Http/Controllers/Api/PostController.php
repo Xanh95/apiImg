@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreatePostRequest;
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\PostDetail;
 use App\Models\PostMeta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Models\UserMeta;
-
+use Stichoza\GoogleTranslate\GoogleTranslate;
 
 class PostController extends ResponseApiController
 {
@@ -70,19 +71,32 @@ class PostController extends ResponseApiController
         ]);
 
         $title = Str::random(10);
-        $slug =  Str::slug($request->name);
+        $name = $request->name;
+        $description = $request->description;
+        $languages = ['ko', 'zh-CN', 'zh-TW', 'th', 'ja', 'vi'];
+        $slug =  Str::slug($name);
         $user = Auth::id();
         $post = new Post;
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
+        $tr = new GoogleTranslate();
 
         $post->user_id = $user;
         $post->slug = $slug;
-        $post->name = $request->name;
+        $post->name = $name;
         $post->status = $request->status;
         $post->type = $request->type;
-        $post->description = $request->description;
+        $post->description = $description;
         $post->save();
+        foreach ($languages as $language) {
+            $post_detail = new PostDetail;
+            $post_detail->name = $tr->setSource('en')->setTarget($language)->translate($name);
+            $post_detail->slug = str_replace(' ', '-', $post_detail->name);
+            $post_detail->description = $tr->setSource('en')->setTarget($language)->translate($description);
+            $post_detail->post_id = $post->id;
+            $post_detail->language = $language;
+            $post_detail->save();
+        }
         if ($data_post_meta) {
             $post_meta = new PostMeta;
             if (isset($data_post_meta['image'])) {
@@ -122,6 +136,10 @@ class PostController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
 
+        $language = $request->language;
+        if ($language) {
+            $post->post_detail = $post->postDetail()->where('language', $language)->get();
+        }
         $post->categories = $post->category()->where('status', 'active')->pluck('name');
         $post->post_meta = $post->postMeta()->get();
 
@@ -149,21 +167,35 @@ class PostController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
+        $name = $request->name;
+        $description = $request->description;
+        $languages = ['ko', 'zh-CN', 'zh-TW', 'th', 'ja', 'vi'];
+        $slug =  Str::slug($name);
         $title = Str::random(10);
-        $slug =  Str::slug($request->name);
         $user = Auth::id();
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
+        $tr = new GoogleTranslate();
 
         $post->user_id = $user;
         $post->slug = $slug;
-        $post->name = $request->name;
+        $post->name = $name;
         if ($request->user()->hasRole('admin') || $user == $post->user_id) {
             $post->status = $request->status;
         }
         $post->type = $request->type;
-        $post->description = $request->description;
+        $post->description = $description;
         $post->save();
+        $post->postDetail()->delete();
+        foreach ($languages as $language) {
+            $post_detail = new PostDetail;
+            $post_detail->name = $tr->setSource('en')->setTarget($language)->translate($name);
+            $post_detail->slug = str_replace(' ', '-', $post_detail->name);
+            $post_detail->description = $tr->setSource('en')->setTarget($language)->translate($description);
+            $post_detail->post_id = $post->id;
+            $post_detail->language = $language;
+            $post_detail->save();
+        }
         if ($data_post_meta) {
             $post_meta = new PostMeta;
             $oldImg = $post->postMeta->where('meta_key', 'image');
@@ -187,8 +219,8 @@ class PostController extends ResponseApiController
                 $post_meta->meta_key = 'image';
                 $post_meta->meta_value = $imageUrl;
                 $post_meta->post_id = $post->id;
+                $post_meta->save();
             }
-            $post_meta->save();
 
             foreach ($data_post_meta as $key => $value) {
                 if ($key != 'image') {

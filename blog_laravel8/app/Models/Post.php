@@ -26,4 +26,8 @@ class Post extends Model
     {
         return $this->hasMany(PostMeta::class);
     }
+    public function postDetail()
+    {
+        return $this->hasMany(PostDetail::class);
+    }
 }
