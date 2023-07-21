@@ -48,8 +48,7 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/delete/user', [App\Http\Controllers\Api\UserController::class, 'destroy'])->can('delete', 'user');
     Route::post('/restore/user', [App\Http\Controllers\Api\UserController::class, 'restore'])->can('delete', 'user');
     // user favorite
-    Route::post('/user/favorite', [App\Http\Controllers\Api\UserController::class, 'addFavorite'])->can('view', User::class);
-    Route::post('/user/subfavorite', [App\Http\Controllers\Api\UserController::class, 'subFavorite'])->can('view', User::class);
+    Route::post('/user/favorite', [App\Http\Controllers\Api\UserController::class, 'addFavorite']);
     Route::get('/user/show/favorite', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
 
     // post

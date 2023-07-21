@@ -17,7 +17,7 @@ class CategoryController extends ResponseApiController
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $status = $request->input('status');
@@ -48,7 +48,7 @@ class CategoryController extends ResponseApiController
     public function store(Request $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -101,7 +101,7 @@ class CategoryController extends ResponseApiController
     public function edit(Category $category, Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
 
@@ -111,7 +111,7 @@ class CategoryController extends ResponseApiController
     public function update(Request $request, Category $category)
     {
         if (!$request->user()->hasPermission('update')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -163,7 +163,7 @@ class CategoryController extends ResponseApiController
     public function restore(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -186,7 +186,7 @@ class CategoryController extends ResponseApiController
     public function destroy(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([

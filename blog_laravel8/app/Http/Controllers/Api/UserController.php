@@ -84,7 +84,7 @@ class UserController extends ResponseApiController
     public function create(Request $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -101,7 +101,7 @@ class UserController extends ResponseApiController
 
         if (!$request->user()->hasRole('admin')) {
             if ($role == 1) {
-                $this->handleError('Unauthorized', 403);
+                return $this->handleError('Unauthorized', 403);
             }
         }
         if ($image) {
@@ -132,7 +132,7 @@ class UserController extends ResponseApiController
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('update')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $data = User::latest()->paginate(10);
@@ -142,7 +142,7 @@ class UserController extends ResponseApiController
     public function edit(Request $request, User $user)
     {
         if (!$request->user()->hasPermission('update') && (Auth::id() != $user->id)) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $data = $user;
@@ -152,7 +152,7 @@ class UserController extends ResponseApiController
     public function update(Request $request, User $user)
     {
         if (!$request->user()->hasPermission('update')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -208,7 +208,7 @@ class UserController extends ResponseApiController
     public function destroy(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -244,7 +244,7 @@ class UserController extends ResponseApiController
     public function restore(Request $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
@@ -267,62 +267,57 @@ class UserController extends ResponseApiController
     public function addFavorite(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
 
         $request->validate([
             'favorite' => 'required|array',
+            'type' => 'required'
         ]);
 
         $favorites = $request->favorite;
+        $type = $request->type;
         $user_meta = $request->user()->userMeta();
-        if ($user_meta->where('meta_key', 'favorite_post')->exists()) {
-            $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
-            $favorited = explode('-', $user_meta->meta_value);
-            $favorite = array_unique(array_merge($favorited, $favorites));
-            $user_meta->meta_value = implode('-', $favorite);
+
+        if ($type == 'add') {
+            if ($user_meta->where('meta_key', 'favorite_post')->exists()) {
+                $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
+                $favorited = explode('-', $user_meta->meta_value);
+                $favorite = array_unique(array_merge($favorited, $favorites));
+                $user_meta->meta_value = implode('-', $favorite);
+                $user_meta->save();
+
+                return $this->handleSuccess([], 'favorite success');
+            }
+            $user_meta = new UserMeta;
+            $user_meta->meta_key = 'favorite_post';
+            $user_meta->meta_value = implode('-', $favorites);
+            $user_meta->user_id = Auth::id();
             $user_meta->save();
 
             return $this->handleSuccess([], 'favorite success');
         }
-        $user_meta = new UserMeta;
-        $user_meta->meta_key = 'favorite_post';
-        $user_meta->meta_value = implode('-', $favorites);
-        $user_meta->user_id = Auth::id();
-        $user_meta->save();
+        if ($type == 'sub') {
+            $user_meta = $user_meta->where('meta_key', 'favorite_post')->first();
 
-        return $this->handleSuccess([], 'favorite success');
-    }
-    public function subFavorite(Request $request)
-    {
-        if (!$request->user()->hasPermission('view')) {
-            $this->handleError('Unauthorized', 403);
+            $favorited = explode('-', $user_meta->meta_value);
+            $favorite = array_diff($favorited, $favorites);
+            $user_meta->meta_value = implode('-', $favorite);
+            $user_meta->save();
+
+            return $this->handleSuccess($user_meta, 'subfavorite success');
         }
-
-        $request->validate([
-            'post_id' => 'required|array',
-        ]);
-
-        $post_ids = $request->post_id;
-        $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
-
-        $favorited = explode('-', $user_meta->meta_value);
-        $favorite = array_diff($favorited, $post_ids);
-        $user_meta->meta_value = implode('-', $favorite);
-
-        $user_meta->save();
-
-        return $this->handleSuccess($user_meta, 'subfavorite success');
     }
+
     public function showFavorite(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized', 403);
         }
         $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
         $post_id = explode('-', $user_meta->meta_value);
-
         $data = Post::find($post_id);
+
         return $this->handleSuccess($data, 'get success');
     }
 }
