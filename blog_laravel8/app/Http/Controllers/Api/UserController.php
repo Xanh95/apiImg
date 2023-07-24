@@ -134,11 +134,37 @@ class UserController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
 
+        $status = $request->input('status');
+        $layout_status = ['inactive', 'active'];
+        $sort = $request->input('sort');
+        $sort_types = ['desc', 'asc'];
+        $sort_option = ['name', 'created_at', 'updated_at'];
+        $sort_by = $request->input('sort_by');
+        $status = in_array($status, $layout_status) ? $status : 'active';
+        $sort = in_array($sort, $sort_types) ? $sort : 'desc';
+        $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
+        $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
+        $role = $request->input('role');
+        $users = User::select('*');
 
-        $data = User::latest()->with('roles')->paginate($limit);
+        if ($status) {
+            $users = $users->where('status', $status);
+        }
+        if ($search) {
+            $users = $users->where('name', 'LIKE', '%' . $search . '%');
+        }
+        if ($role) {
+            $users = $users->whereHas('roles', function ($q) use ($role) {
+                $q->where('name', $role);
+            });
+        }
+        $users = $users->with('roles');
 
-        return $this->handleSuccess($data, 'get data user success');
+
+        $users = $users->orderBy($sort_by, $sort)->paginate($limit);
+
+        return $this->handleSuccess($users, 'get data user success');
     }
     public function edit(Request $request, User $user)
     {

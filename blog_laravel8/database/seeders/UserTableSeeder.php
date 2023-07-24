@@ -18,7 +18,7 @@ class UserTableSeeder extends Seeder
     public function run()
     {
         //
-        for ($i = 11; $i < 31; $i++) {
+        for ($i = 1; $i < 31; $i++) {
             $user = new User;
             $user->email = "usernumber$i.@gmail.com";
             $role = random_int(1, 4);

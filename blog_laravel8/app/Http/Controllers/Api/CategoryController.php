@@ -93,8 +93,10 @@ class CategoryController extends ResponseApiController
         $category->status = $request->status;
         $category->type = $request->type;
         $category->description = $request->description;
-        $category->post()->sync($post_ids);
         $category->save();
+        if ($post_ids) {
+            $category->posts()->sync($post_ids);
+        }
 
         return $this->handleSuccess($category, 'save success');
     }
