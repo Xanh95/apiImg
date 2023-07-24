@@ -50,14 +50,18 @@ Route::middleware('auth:api', 'verified')->group(function () {
     // user favorite
     Route::post('/user/favorite', [App\Http\Controllers\Api\UserController::class, 'addFavorite']);
     Route::get('/user/show/favorite', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
+    // edit my account
+    Route::get('/edit/my_account', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
 
     // post
     Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index'])->can('view', Post::class);
     Route::post('/create/post', [App\Http\Controllers\Api\PostController::class, 'store'])->can('update', Post::class);
     Route::get('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'edit'])->can('view', Post::class);
     Route::post('/edit/post/{post}', [App\Http\Controllers\Api\PostController::class, 'update'])->can('update', 'post');
+    Route::post('/edit/post-detail/{post}', [App\Http\Controllers\Api\PostController::class, 'updateDetails'])->can('update', 'post');
     Route::post('/delete/post', [App\Http\Controllers\Api\PostController::class, 'destroy'])->can('delete', Post::class);
     Route::post('/restore/post', [App\Http\Controllers\Api\PostController::class, 'restore'])->can('delete', Post::class);
+
 
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store'])->can('create', Category::class);

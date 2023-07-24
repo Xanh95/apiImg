@@ -13,7 +13,6 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Models\UserMeta;
-use Stichoza\GoogleTranslate\GoogleTranslate;
 
 class PostController extends ResponseApiController
 {
@@ -26,6 +25,7 @@ class PostController extends ResponseApiController
 
         $status = $request->input('status');
         $layout_status = ['inactive', 'active'];
+        $languages = config('app.languages');
         $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
         $sort_option = ['name', 'created_at', 'updated_at'];
@@ -35,7 +35,8 @@ class PostController extends ResponseApiController
         $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
-
+        $language = $request->language;
+        $language = in_array($language, $languages) ? $language : '';
         $query = Post::select('*');
 
         if ($status) {
@@ -44,6 +45,15 @@ class PostController extends ResponseApiController
         if ($search) {
             $query = $query->where('name', 'LIKE', '%' . $search . '%');
         }
+        if ($language) {
+            $query = $query->whereHas('postDetail', function ($q) use ($language) {
+                $q->where('language', $language);
+            });
+            $query = $query->with(['postDetail' => function ($q) use ($language) {
+                $q->where('language', $language);
+            }]);
+        }
+
         $posts = $query->orderBy($sort_by, $sort)->paginate($limit);
 
         return $this->handleSuccess($posts, 'Posts data');
@@ -73,13 +83,12 @@ class PostController extends ResponseApiController
         $title = Str::random(10);
         $name = $request->name;
         $description = $request->description;
-        $languages = ['ko', 'zh-CN', 'zh-TW', 'th', 'ja', 'vi'];
+        $languages = config('app.languages');
         $slug =  Str::slug($name);
         $user = Auth::id();
         $post = new Post;
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
-        $tr = new GoogleTranslate();
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -90,9 +99,9 @@ class PostController extends ResponseApiController
         $post->save();
         foreach ($languages as $language) {
             $post_detail = new PostDetail;
-            $post_detail->name = $tr->setSource('en')->setTarget($language)->translate($name);
+            $post_detail->name = translate($language, $name);
             $post_detail->slug = str_replace(' ', '-', $post_detail->name);
-            $post_detail->description = $tr->setSource('en')->setTarget($language)->translate($description);
+            $post_detail->description = translate($language, $description);
             $post_detail->post_id = $post->id;
             $post_detail->language = $language;
             $post_detail->save();
@@ -137,6 +146,7 @@ class PostController extends ResponseApiController
         }
 
         $language = $request->language;
+
         if ($language) {
             $post->post_detail = $post->postDetail()->where('language', $language)->get();
         }
@@ -169,13 +179,12 @@ class PostController extends ResponseApiController
 
         $name = $request->name;
         $description = $request->description;
-        $languages = ['ko', 'zh-CN', 'zh-TW', 'th', 'ja', 'vi'];
+        $languages = config('app.languages');
         $slug =  Str::slug($name);
         $title = Str::random(10);
         $user = Auth::id();
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
-        $tr = new GoogleTranslate();
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -189,9 +198,9 @@ class PostController extends ResponseApiController
         $post->postDetail()->delete();
         foreach ($languages as $language) {
             $post_detail = new PostDetail;
-            $post_detail->name = $tr->setSource('en')->setTarget($language)->translate($name);
+            $post_detail->name = translate($language, $name);
             $post_detail->slug = str_replace(' ', '-', $post_detail->name);
-            $post_detail->description = $tr->setSource('en')->setTarget($language)->translate($description);
+            $post_detail->description = translate($language, $description);
             $post_detail->post_id = $post->id;
             $post_detail->language = $language;
             $post_detail->save();
@@ -310,5 +319,30 @@ class PostController extends ResponseApiController
         } else {
             return $this->handleSuccess([], 'Post delete successfully!');
         }
+    }
+    public function updateDetails(Request $request, Post $post)
+    {
+        if (!$request->user()->hasPermission('update')) {
+            return  $this->handleError('Unauthorized', 403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max: 255',
+            'description' => 'string',
+        ]);
+
+        $language = $request->language;
+        $name = $request->name;
+        $slug =  Str::slug($name);
+
+        if (!($language && in_array($language, config('app.languages')))) {
+            return $this->handleError('Not Found Language', 404);
+        }
+        $post_detail = $post->postDetail()->where('language', $language)->first();
+        $post_detail->name = $name;
+        $post_detail->slug = $slug;
+        $post_detail->description = $request->description;
+        $post_detail->save();
+        return $this->handleSuccess($post_detail, 'Post detail updated successfully');
     }
 }

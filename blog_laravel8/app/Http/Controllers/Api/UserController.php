@@ -120,7 +120,6 @@ class UserController extends ResponseApiController
         }
         $user->email = $request->email;
         $user->password = $request->password;
-        $user->name = $request->name;
         $user->password = Hash::make($request->password);
         $user->email_verified_at = Carbon::now();
         $user->status = 'active';
@@ -135,7 +134,9 @@ class UserController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
 
-        $data = User::latest()->paginate(10);
+        $limit = request()->input('limit') ?? config('app.paginate');
+
+        $data = User::latest()->with('roles')->paginate($limit);
 
         return $this->handleSuccess($data, 'get data user success');
     }
@@ -319,5 +320,26 @@ class UserController extends ResponseApiController
         $data = Post::find($post_id);
 
         return $this->handleSuccess($data, 'get success');
+    }
+    public function editMyPassWord(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::find(Auth::id());
+        $current_password = $request->current_password;
+        $password = $request->password;
+
+
+        if (!Hash::check($current_password, $user->password)) {
+            return $this->handleError('Current password is incorrect', 401);
+        }
+
+        $user->password = Hash::make($password);
+        $user->save();
+
+        return $this->handleSuccess([], 'change password success');
     }
 }
