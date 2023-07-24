@@ -134,6 +134,8 @@ class CategoryController extends ResponseApiController
         $path = str_replace(url('/') . '/storage', 'public', $category->link);
         $user = Auth::id();
         $slug = Str::slug($request->name);
+        $post_ids = $request->post_ids;
+
 
         if ($image) {
             $dirUpload = 'public/upload/category/' . date('Y/m/d');
@@ -158,6 +160,9 @@ class CategoryController extends ResponseApiController
         $category->type = $request->type;
         $category->description = $request->description;
         $category->save();
+        if ($post_ids) {
+            $category->posts()->sync($post_ids);
+        }
 
         return $this->handleSuccess($category, 'update success');
     }
