@@ -19,7 +19,7 @@ class PostTableSeeder extends Seeder
     public function run()
     {
         //
-        for ($i = 1; $i < 3001; $i++) {
+        for ($i = 2539; $i < 3001; $i++) {
             $post = new Post;
             $category_ids = random_int(46, 95);
             $data_post_meta = [

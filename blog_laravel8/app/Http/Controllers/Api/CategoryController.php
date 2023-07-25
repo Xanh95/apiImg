@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\ResponseApiController;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Intervention\Image\Facades\Image;
+
+use function PHPUnit\Framework\isEmpty;
 
 class CategoryController extends ResponseApiController
 {
@@ -41,6 +44,11 @@ class CategoryController extends ResponseApiController
             $query = $query->where('name', 'LIKE', '%' . $search . '%');
         }
         $categories = $query->orderBy($sort_by, $sort)->paginate($limit);
+        foreach ($categories as $category) {
+            if ($category->link) {
+                $category->link = explode('-', $category->link);
+            }
+        }
 
         return $this->handleSuccess($categories, 'Categories data');
     }
@@ -66,25 +74,14 @@ class CategoryController extends ResponseApiController
         ]);
 
         $image = $request->image;
-        $title = Str::random(10);
-        $slug =  Str::slug($request->name);
         $user = Auth::id();
-        $category = new Category;
-        $image = $request->image;
-        $title = Str::random(10);
         $slug =  Str::slug($request->name);
-        $user = Auth::id();
         $category = new Category;
         $post_ids = $request->post_ids;
 
         if ($image) {
             $dirUpload = 'public/upload/category/' . date('Y/m/d');
-            if (!Storage::exists($dirUpload)) {
-                Storage::makeDirectory($dirUpload, 0755, true);
-            }
-            $imageName = $title . '.' . $image->extension();
-            $image->storeAs($dirUpload, $imageName);
-            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+            $imageUrl = uploadImage($image, $dirUpload);
             $category->link = $imageUrl;
         }
         $category->slug = $slug;
@@ -131,24 +128,17 @@ class CategoryController extends ResponseApiController
         ]);
 
         $image = $request->image;
-        $path = str_replace(url('/') . '/storage', 'public', $category->link);
         $user = Auth::id();
         $slug = Str::slug($request->name);
         $post_ids = $request->post_ids;
 
-
         if ($image) {
-            $dirUpload = 'public/upload/category/' . date('Y/m/d');
-            $title =  Str::random(10);
-            if (!Storage::exists($dirUpload)) {
-                Storage::makeDirectory($dirUpload, 0755, true);
-            }
-            $imageName = $title . '.' . $image->extension();
-            $image->storeAs($dirUpload, $imageName);
+            $path = str_replace(url('/') . '/storage', 'public', $category->link);
             if ($path) {
                 Storage::delete($path);
             }
-            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+            $dirUpload = 'public/upload/category/' . date('Y/m/d');
+            $imageUrl = uploadImage($image, $dirUpload);
             $category->link = $imageUrl;
         }
         $category->slug = $slug;
@@ -162,6 +152,9 @@ class CategoryController extends ResponseApiController
         $category->save();
         if ($post_ids) {
             $category->posts()->sync($post_ids);
+        }
+        if ($category->link) {
+            $category->link = explode('-', $category->link);
         }
 
         return $this->handleSuccess($category, 'update success');
@@ -183,7 +176,7 @@ class CategoryController extends ResponseApiController
 
         foreach ($ids as $id) {
             $category = Category::find($id);
-            $category->status = '1';
+            $category->status = 'active';
             $category->save();
         }
 
@@ -210,8 +203,8 @@ class CategoryController extends ResponseApiController
             $category->status = 'inactive';
             $category->save();
             if ($type === 'force_delete') {
-                if ($category->url) {
-                    $path = 'public' . Str::after($category->link, 'storage');
+                $path = str_replace(url('/') . '/storage', 'public', $category->link);
+                if ($path) {
                     Storage::delete($path);
                 }
                 $category->forceDelete();

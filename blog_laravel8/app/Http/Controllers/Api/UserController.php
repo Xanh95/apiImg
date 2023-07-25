@@ -106,16 +106,7 @@ class UserController extends ResponseApiController
         }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
-            $title =  Str::random(10);
-            if (!Storage::exists($dirUpload)) {
-                Storage::makeDirectory($dirUpload, 0755, true);
-            }
-            $imageName = $title . '.' . $image->extension();
-            $image->storeAs($dirUpload, $imageName);
-            if ($path) {
-                Storage::delete($path);
-            }
-            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+            $imageUrl = uploadImage($image, $dirUpload);
             $user->avatar = $imageUrl;
         }
         $user->email = $request->email;
@@ -203,17 +194,11 @@ class UserController extends ResponseApiController
         }
         if ($image) {
             $dirUpload = 'public/upload/user/' . date('Y/m/d');
-            $title =  Str::random(10);
-            if (!Storage::exists($dirUpload)) {
-                Storage::makeDirectory($dirUpload, 0755, true);
-            }
-            $imageName = $title . '.' . $image->extension();
-            $image->storeAs($dirUpload, $imageName);
             $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
             if ($path) {
                 Storage::delete($path);
             }
-            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+            $imageUrl = uploadImage($image, $dirUpload);
             $user->avatar = $imageUrl;
         }
         if ($password) {

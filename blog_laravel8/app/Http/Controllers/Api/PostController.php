@@ -111,13 +111,7 @@ class PostController extends ResponseApiController
             if (isset($data_post_meta['image'])) {
                 $image = $data_post_meta['image'];
                 $dirUpload = 'public/upload/post/' . date('Y/m/d');
-                if (!Storage::exists($dirUpload)) {
-                    Storage::makeDirectory($dirUpload, 0755, true);
-                }
-                $imageName = $title . '.' . $image->extension();
-
-                $image->storeAs($dirUpload, $imageName);
-                $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+                $imageUrl = uploadImage($image, $dirUpload);
                 $post_meta->meta_key = 'image';
                 $post_meta->meta_value = $imageUrl;
                 $post_meta->post_id = $post->id;
@@ -219,12 +213,7 @@ class PostController extends ResponseApiController
             if (isset($data_post_meta['image'])) {
                 $image = $data_post_meta['image'];
                 $dirUpload = 'public/upload/post/' . date('Y/m/d');
-                if (!Storage::exists($dirUpload)) {
-                    Storage::makeDirectory($dirUpload, 0755, true);
-                }
-                $imageName = $title . '.' . $image->extension();
-                $image->storeAs($dirUpload, $imageName);
-                $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
+                $imageUrl = uploadImage($image, $dirUpload);
                 $post_meta->meta_key = 'image';
                 $post_meta->meta_value = $imageUrl;
                 $post_meta->post_id = $post->id;
