@@ -27,4 +27,8 @@ class Article extends Model
     {
         return $this->hasMany(ArticleMeta::class);
     }
+    public function articleDetail()
+    {
+        return $this->hasMany(ArticleDetail::class);
+    }
 }

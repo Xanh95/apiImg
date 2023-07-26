@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PostDetail extends Model
+class ArticleDetail extends Model
 {
     use HasFactory;
     protected $fillable = [
@@ -16,8 +16,8 @@ class PostDetail extends Model
         'user_id',
         'slug',
     ];
-    function post()
+    function article()
     {
-        return $this->belongsTo(Post::class);
+        return $this->belongsTo(Article::class);
     }
 }
