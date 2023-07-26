@@ -13,13 +13,11 @@ class UploadController extends ResponseApiController
     {
         $request->validate([
             'images.*' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'id_object' => 'required',
             'object' => 'required'
         ]);
 
         $images = $request->images;
         $object = $request->object;
-        $id_object = $request->id_object;
         $dirUpload = "public/upload/$object/" . date('Y/m/d');
         $urls = [];
         $upload = new Upload;
