@@ -71,6 +71,9 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('restore/category', [App\Http\Controllers\Api\CategoryController::class, 'restore'])->can('delete', Category::class);
     Route::get('/category', [App\Http\Controllers\Api\CategoryController::class, 'index']);
 
+    // upload image
+    Route::post('/upload/image', [App\Http\Controllers\Api\UploadController::class, 'store']);
+
     // photo
     Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);
     Route::get('edit/photo/{photo}', [App\Http\Controllers\Api\PhotoController::class, 'edit']);

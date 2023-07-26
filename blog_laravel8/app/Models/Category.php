@@ -28,4 +28,8 @@ class Category extends Model
     {
         return $this->belongsToMany(Article::class);
     }
+    public function upload()
+    {
+        return $this->hasMany(Upload::class);
+    }
 }

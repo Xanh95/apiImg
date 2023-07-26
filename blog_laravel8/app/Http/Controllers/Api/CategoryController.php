@@ -45,9 +45,7 @@ class CategoryController extends ResponseApiController
         }
         $categories = $query->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($categories as $category) {
-            if ($category->link) {
-                $category->link = explode('-', $category->link);
-            }
+            $category->image = explode('-', $category->upload()->pluck('urls')->first());
         }
 
         return $this->handleSuccess($categories, 'Categories data');
@@ -79,11 +77,6 @@ class CategoryController extends ResponseApiController
         $category = new Category;
         $post_ids = $request->post_ids;
 
-        if ($image) {
-            $dirUpload = 'public/upload/category/' . date('Y/m/d');
-            $imageUrl = uploadImage($image, $dirUpload);
-            $category->link = $imageUrl;
-        }
         $category->slug = $slug;
         $category->user_id = $user;
         $category->name = $request->name;
@@ -103,6 +96,7 @@ class CategoryController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
+        $category->upload = $category->upload()->get();
 
         return $this->handleSuccess($category, 'success');
     }
@@ -127,7 +121,7 @@ class CategoryController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
-        $image = $request->image;
+        $images = $category->upload()->pluck('urls');
         $user = Auth::id();
         $slug = Str::slug($request->name);
         $post_ids = $request->post_ids;

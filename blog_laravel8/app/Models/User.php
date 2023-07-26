@@ -36,6 +36,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(UserMeta::class);
     }
+    public function upload()
+    {
+        return $this->hasMany(Upload::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

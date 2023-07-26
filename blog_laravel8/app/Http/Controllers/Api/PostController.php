@@ -108,24 +108,12 @@ class PostController extends ResponseApiController
         }
         if ($data_post_meta) {
             $post_meta = new PostMeta;
-            if (isset($data_post_meta['image'])) {
-                $image = $data_post_meta['image'];
-                $dirUpload = 'public/upload/post/' . date('Y/m/d');
-                $imageUrl = uploadImage($image, $dirUpload);
-                $post_meta->meta_key = 'image';
-                $post_meta->meta_value = $imageUrl;
+            foreach ($data_post_meta as $key => $value) {
+                $post_meta = new PostMeta();
+                $post_meta->meta_key = $key;
+                $post_meta->meta_value = $value;
                 $post_meta->post_id = $post->id;
                 $post_meta->save();
-            }
-
-            foreach ($data_post_meta as $key => $value) {
-                if ($key != 'image') {
-                    $post_meta = new PostMeta();
-                    $post_meta->meta_key = $key;
-                    $post_meta->meta_value = $value;
-                    $post_meta->post_id = $post->id;
-                    $post_meta->save();
-                }
             }
         }
         $post->Category()->sync($category_ids);
