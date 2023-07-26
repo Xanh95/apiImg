@@ -18,10 +18,14 @@ class Category extends Model
         'type',
         'description',
         'link',
-        'path'
+
     ];
     public function posts(): BelongsToMany
     {
         return $this->belongsToMany(Post::class);
+    }
+    public function articles(): BelongsToMany
+    {
+        return $this->belongsToMany(Article::class);
     }
 }
