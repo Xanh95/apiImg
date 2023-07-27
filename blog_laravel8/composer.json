@@ -35,7 +35,7 @@
         },
         "files": [
             "app/Helpers/TranslateHelper.php",
-            "app/Helpers/UploadImageHelper.php"
+            "app/Helpers/CheckImgUsedHelper.php"
         ]
     },
     "autoload-dev": {

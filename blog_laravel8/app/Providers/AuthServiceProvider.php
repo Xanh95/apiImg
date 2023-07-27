@@ -20,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Model' => 'App\Policies\ModelPolicy',
         User::class => UserPolicy::class,
         Post::class => PostPolicy::class,
+        Article::class => ArticlePolicy::class,
         Category::class => CategoryPolicy::class,
     ];
 

@@ -62,6 +62,17 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/delete/post', [App\Http\Controllers\Api\PostController::class, 'destroy'])->can('delete', Post::class);
     Route::post('/restore/post', [App\Http\Controllers\Api\PostController::class, 'restore'])->can('delete', Post::class);
 
+    // article
+    Route::get('/article', [App\Http\Controllers\Api\ArticleController::class, 'index'])->can('view', Article::class);
+    Route::post('/create/article', [App\Http\Controllers\Api\ArticleController::class, 'store'])->can('update', Article::class);
+    Route::get('/edit/article/{article}', [App\Http\Controllers\Api\ArticleController::class, 'edit'])->can('view', Article::class);
+    Route::post('/edit/article/{article}', [App\Http\Controllers\Api\ArticleController::class, 'update'])->can('update', 'post');
+    Route::post('/edit/article-detail/{article}', [App\Http\Controllers\Api\ArticleController::class, 'updateDetails'])->can('update', 'post');
+    Route::post('/delete/article', [App\Http\Controllers\Api\ArticleController::class, 'destroy'])->can('delete', Article::class);
+    Route::post('/restore/article', [App\Http\Controllers\Api\ArticleController::class, 'restore'])->can('delete', Article::class);
+    Route::post('/article/status', [ArticleController::class, 'status'])->can('status', Article::class);
+
+
 
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store'])->can('create', Category::class);

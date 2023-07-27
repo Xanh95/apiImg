@@ -7,6 +7,7 @@ use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Api\ResponseApiController;
+use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,7 @@ class CategoryController extends ResponseApiController
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
 
+
         $query = Category::select('*');
 
         if ($status) {
@@ -45,7 +47,15 @@ class CategoryController extends ResponseApiController
         }
         $categories = $query->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($categories as $category) {
-            $category->image = explode('-', $category->upload()->pluck('urls')->first());
+            if ($category->url) {
+                $url_ids = explode('-', $category->url);
+                foreach ($url_ids as $url_id) {
+                    $image[] = Upload::find($url_id)->url;
+                }
+
+
+                $category->image = $image;
+            }
         }
 
         return $this->handleSuccess($categories, 'Categories data');
@@ -62,7 +72,7 @@ class CategoryController extends ResponseApiController
             'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
+
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
@@ -71,7 +81,7 @@ class CategoryController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
-        $image = $request->image;
+        $url_ids = $request->url_id;
         $user = Auth::id();
         $slug =  Str::slug($request->name);
         $category = new Category;
@@ -83,6 +93,8 @@ class CategoryController extends ResponseApiController
         $category->status = $request->status;
         $category->type = $request->type;
         $category->description = $request->description;
+        $category->url = implode('-', $url_ids);
+        CheckUsed($url_ids);
         $category->save();
         if ($post_ids) {
             $category->posts()->sync($post_ids);
@@ -96,7 +108,9 @@ class CategoryController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
-        $category->upload = $category->upload()->get();
+        if ($category->url) {
+            $category->image = explode('-', Upload::find($category->url)->urls);
+        }
 
         return $this->handleSuccess($category, 'success');
     }
@@ -112,7 +126,6 @@ class CategoryController extends ResponseApiController
             'status' => 'required|string',
             'type' => 'required',
             'description' => 'required',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ], [
             'name.required' => 'A name is required',
             'status.required' => 'A status is required',
@@ -121,35 +134,42 @@ class CategoryController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
-        $images = $category->upload()->pluck('urls');
-        $user = Auth::id();
-        $slug = Str::slug($request->name);
-        $post_ids = $request->post_ids;
 
-        if ($image) {
-            $path = str_replace(url('/') . '/storage', 'public', $category->link);
-            if ($path) {
-                Storage::delete($path);
-            }
-            $dirUpload = 'public/upload/category/' . date('Y/m/d');
-            $imageUrl = uploadImage($image, $dirUpload);
-            $category->link = $imageUrl;
-        }
+        $user = Auth::id();
+        $name = $request->name;
+        $slug = Str::slug($name);
+        $post_ids = $request->post_ids;
+        $url_ids = $request->url_id;
+        $type = $request->type;
+        $description = $request->description;
+        $status = $request->status;
+        $current_url = $category->url;
+
         $category->slug = $slug;
         $category->user_id = $user;
-        $category->name = $request->name;
+        $category->name = $name;
         if ($request->user()->hasRole('admin') || $user == $category->user_id) {
-            $category->status = $request->status;
+            $category->status = $status;
         }
-        $category->type = $request->type;
-        $category->description = $request->description;
-        $category->save();
+        $category->type = $type;
+        $category->description = $description;
         if ($post_ids) {
             $category->posts()->sync($post_ids);
         }
-        if ($category->link) {
-            $category->link = explode('-', $category->link);
+        if ($request->has('url_id')) {
+            if ($current_url) {
+                $current_url_ids = explode('-', $current_url);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                    Storage::delete($path);
+                    $image->delete();
+                }
+            }
+            CheckUsed($url_ids);
+            $category->url = implode('-', $url_ids);
         }
+        $category->save();
 
         return $this->handleSuccess($category, 'update success');
     }
@@ -197,9 +217,12 @@ class CategoryController extends ResponseApiController
             $category->status = 'inactive';
             $category->save();
             if ($type === 'force_delete') {
-                $path = str_replace(url('/') . '/storage', 'public', $category->link);
-                if ($path) {
+                $current_url_ids = explode('-', $category->url);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image);
                     Storage::delete($path);
+                    $image->delete();
                 }
                 $category->forceDelete();
             } else {

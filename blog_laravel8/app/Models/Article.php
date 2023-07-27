@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\HasPermissionsTrait;
+
 
 
 class Article extends Model
@@ -30,9 +32,5 @@ class Article extends Model
     public function articleDetail()
     {
         return $this->hasMany(ArticleDetail::class);
-    }
-    public function upload()
-    {
-        return $this->hasMany(Upload::class);
     }
 }

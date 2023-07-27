@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\Role;
 use App\Models\UserMeta;
 use App\Models\Post;
+use App\Models\Upload;
 
 class UserController extends ResponseApiController
 {
@@ -30,20 +31,11 @@ class UserController extends ResponseApiController
         ]);
 
         $user = new User;
-        $image = $request->image;
+        $url_id = $request->url_id;
         $pin = random_int(100000, 999999);
 
-
-        if ($image) {
-            $dirUpload = 'public/upload/user/' . date('Y/m/d');
-            $title =  Str::random(10);
-            if (!Storage::exists($dirUpload)) {
-                Storage::makeDirectory($dirUpload, 0755, true);
-            }
-            $imageName = $title . '.' . $image->extension();
-            $image->storeAs($dirUpload, $imageName);
-            $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
-            $user->avatar = $imageUrl;
+        if ($url_id) {
+            $user->avatar = implode('-', $url_id);
         }
         $user->email = $request->email;
         $user->name = $request->name;
@@ -53,6 +45,14 @@ class UserController extends ResponseApiController
         $user->roles()->sync(2);
         // event(new Registered($user));
 
+        $url_id = explode('-', $user->avatar);
+
+        if ($url_id) {
+            foreach ($url_id as $id) {
+                $avatar[] = Upload::find($id)->url;
+            }
+            $user->avatar = $avatar;
+        }
         Mail::to($user->email)->send(new VerifyPin($pin));
 
         return $this->handleSuccess($user, 'success');
@@ -78,6 +78,14 @@ class UserController extends ResponseApiController
     public function userInfo(Request $request)
     {
         $user = $request->user('api');
+        $url_id = explode('-', $user->avatar);
+
+        if ($url_id) {
+            foreach ($url_id as $id) {
+                $avatar[] = Upload::find($id)->url;
+            }
+            $user->avatar = $avatar;
+        }
 
         return $this->handleSuccess($user, 'success');
     }
@@ -95,8 +103,8 @@ class UserController extends ResponseApiController
         ]);
         $user = new User;
         $role = $request->role ?? 2;
-        $image = $request->image;
-        $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
+        $url_id = $request->url_id;
+
 
 
         if (!$request->user()->hasRole('admin')) {
@@ -104,10 +112,8 @@ class UserController extends ResponseApiController
                 return $this->handleError('Unauthorized', 403);
             }
         }
-        if ($image) {
-            $dirUpload = 'public/upload/user/' . date('Y/m/d');
-            $imageUrl = uploadImage($image, $dirUpload);
-            $user->avatar = $imageUrl;
+        if ($url_id) {
+            $user->avatar = implode('-', $url_id);
         }
         $user->email = $request->email;
         $user->password = $request->password;
@@ -151,9 +157,16 @@ class UserController extends ResponseApiController
             });
         }
         $users = $users->with('roles');
-
-
         $users = $users->orderBy($sort_by, $sort)->paginate($limit);
+        foreach ($users as $user) {
+            if ($user->avatar) {
+                $url_id = explode('-', $user->avatar);
+                foreach ($url_id as $id) {
+                    $avatar[] = Upload::find($id)->url;
+                }
+                $user->avatar = $avatar;
+            }
+        }
 
         return $this->handleSuccess($users, 'get data user success');
     }
@@ -161,6 +174,12 @@ class UserController extends ResponseApiController
     {
         if (!$request->user()->hasPermission('update') && (Auth::id() != $user->id)) {
             return $this->handleError('Unauthorized', 403);
+        }
+
+        $url_id = $user->avatar;
+
+        if ($url_id) {
+            $user->avatar = Upload::find($url_id)->url;
         }
 
         $data = $user;
@@ -178,11 +197,10 @@ class UserController extends ResponseApiController
             'password' => 'min:8',
             'name' => 'required|max:150',
             'role' => 'required',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ]);
 
         $role = $request->role;
-        $image = $request->image;
+        $url_id = $request->url_id;
         $password = $request->password;
         $name = $request->name;
         $email = $request->email;
@@ -192,14 +210,16 @@ class UserController extends ResponseApiController
                 $this->handleError('Unauthorized', 403);
             }
         }
-        if ($image) {
-            $dirUpload = 'public/upload/user/' . date('Y/m/d');
-            $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
-            if ($path) {
+        if ($url_id) {
+            $current_url_ids = explode('-', $user->avatar);
+            foreach ($current_url_ids as $current_url_id) {
+                $image = Upload::find($current_url_id);
+                $path = str_replace(url('/') . '/storage', 'public', $image->url);
                 Storage::delete($path);
+                $image->delete();
             }
-            $imageUrl = uploadImage($image, $dirUpload);
-            $user->avatar = $imageUrl;
+            $user->avatar = implode('-', $url_id);
+            CheckUsed($url_id);
         }
         if ($password) {
             $user->password = Hash::make($password);
@@ -237,9 +257,12 @@ class UserController extends ResponseApiController
             $user->status = 'inactive';
             $user->save();
             if ($type === 'force_delete') {
-                $path = str_replace(url('/') . '/storage', 'public', $user->avatar);
-                if ($path) {
+                $current_url_ids = explode('-', $user->avatar);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
                     Storage::delete($path);
+                    $image->delete();
                 }
                 $user->forceDelete();
             } else {

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CreatePostRequest;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostDetail;
@@ -13,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Models\UserMeta;
+use App\Models\Upload;
 
 class PostController extends ResponseApiController
 {
@@ -53,8 +53,17 @@ class PostController extends ResponseApiController
                 $q->where('language', $language);
             }]);
         }
-
         $posts = $query->orderBy($sort_by, $sort)->paginate($limit);
+        foreach ($posts as $post) {
+            $url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
+            if (!$url_ids->isEmpty()) {
+                $url_ids = explode('-', $url_ids[0]);
+                foreach ($url_ids as $url_id) {
+                    $image[] = Upload::find($url_id)->url;
+                }
+                $post->image = $image;
+            }
+        }
 
         return $this->handleSuccess($posts, 'Posts data');
     }
@@ -80,7 +89,6 @@ class PostController extends ResponseApiController
             'type.required' => 'A type is required',
         ]);
 
-        $title = Str::random(10);
         $name = $request->name;
         $description = $request->description;
         $languages = config('app.languages');
@@ -89,6 +97,7 @@ class PostController extends ResponseApiController
         $post = new Post;
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
+        $data_post_meta['url_id'] = $request->url_id;
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -107,13 +116,23 @@ class PostController extends ResponseApiController
             $post_detail->save();
         }
         if ($data_post_meta) {
-            $post_meta = new PostMeta;
-            foreach ($data_post_meta as $key => $value) {
+            if ($data_post_meta['url_id']) {
                 $post_meta = new PostMeta();
-                $post_meta->meta_key = $key;
-                $post_meta->meta_value = $value;
+                $post_meta->meta_key = 'url_id';
+                $post_meta->meta_value = implode('-', $data_post_meta['url_id']);
+                CheckUsed($data_post_meta['url_id']);
                 $post_meta->post_id = $post->id;
                 $post_meta->save();
+            }
+            $post_meta = new PostMeta;
+            foreach ($data_post_meta as $key => $value) {
+                if ($key != 'url_id') {
+                    $post_meta = new PostMeta();
+                    $post_meta->meta_key = $key;
+                    $post_meta->meta_value = $value;
+                    $post_meta->post_id = $post->id;
+                    $post_meta->save();
+                }
             }
         }
         $post->Category()->sync($category_ids);
@@ -134,6 +153,14 @@ class PostController extends ResponseApiController
         }
         $post->categories = $post->category()->where('status', 'active')->pluck('name');
         $post->post_meta = $post->postMeta()->get();
+        $url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
+        if (!$url_ids->isEmpty()) {
+            $url_ids = explode('-', $url_ids[0]);
+            foreach ($url_ids as $url_id) {
+                $image[] = Upload::find($url_id)->url;
+            }
+            $post->image = $image;
+        }
 
         return $this->handleSuccess($post, 'success');
     }
@@ -163,10 +190,10 @@ class PostController extends ResponseApiController
         $description = $request->description;
         $languages = config('app.languages');
         $slug =  Str::slug($name);
-        $title = Str::random(10);
         $user = Auth::id();
         $category_ids = $request->category_id;
         $data_post_meta = $request->post_metas;
+        $data_post_meta['url_id'] = $request->url_id;
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -188,28 +215,29 @@ class PostController extends ResponseApiController
             $post_detail->save();
         }
         if ($data_post_meta) {
-            $post_meta = new PostMeta;
-            $oldImg = $post->postMeta->where('meta_key', 'image');
-            if (!$oldImg->isEmpty()) {
-                $path = str_replace(url('/') . '/storage', 'public', $oldImg->first()->meta_value);
-                if ($path) {
+
+            $post->postMeta()->where('meta_key', '!=', 'url_id')->delete();
+            if (isset($data_post_meta['url_id'])) {
+                $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
+                $current_url_ids = explode('-', $current_url_ids[0]);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
                     Storage::delete($path);
+                    $image->delete();
                 }
-                $oldImg->first()->forceDelete();
-            }
-            $post->postMeta()->delete();
-            if (isset($data_post_meta['image'])) {
-                $image = $data_post_meta['image'];
-                $dirUpload = 'public/upload/post/' . date('Y/m/d');
-                $imageUrl = uploadImage($image, $dirUpload);
-                $post_meta->meta_key = 'image';
-                $post_meta->meta_value = $imageUrl;
+                $post->postMeta()->delete();
+                CheckUsed($data_post_meta['url_id']);
+                $url_ids = implode('-', $data_post_meta['url_id']);
+                $post_meta = new PostMeta();
+                $post_meta->meta_key = 'url_id';
+                $post_meta->meta_value = $url_ids;
                 $post_meta->post_id = $post->id;
                 $post_meta->save();
             }
 
             foreach ($data_post_meta as $key => $value) {
-                if ($key != 'image') {
+                if ($key != 'url_id') {
                     $post_meta = new PostMeta();
                     $post_meta->meta_key = $key;
                     $post_meta->meta_value = $value;
@@ -266,13 +294,13 @@ class PostController extends ResponseApiController
             $post->status = 'inactive';
             $post->save();
             if ($type === 'force_delete') {
-                $post_metas = $post->postMeta()->get();
-                foreach ($post_metas as $post_meta) {
-                    $value = $post_meta->value;
-                    if (filter_var($value, FILTER_VALIDATE_URL) !== false) {
-                        $path = 'public' . Str::after($post_meta->value, 'storage');
-                        Storage::delete($path);
-                    }
+                $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
+                $current_url_ids = explode('-', $current_url_ids[0]);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                    Storage::delete($path);
+                    $image->delete();
                 }
                 foreach ($ids as $id) {
                     $user_metas = UserMeta::where('meta_key', 'favorite_post')
