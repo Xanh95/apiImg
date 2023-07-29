@@ -17,6 +17,9 @@ use App\Models\Role;
 use App\Models\UserMeta;
 use App\Models\Post;
 use App\Models\Upload;
+use App\Mail\ArticleStatus;
+use App\Models\Article;
+use App\Models\ReversionArticle;
 
 class UserController extends ResponseApiController
 {
@@ -375,5 +378,59 @@ class UserController extends ResponseApiController
         $user->save();
 
         return $this->handleSuccess([], 'change password success');
+    }
+    public function approve(Request $request, Article $article)
+    {
+        if (!$request->user()->hasRole('admin')) {
+            return  $this->handleError('Unauthorized', 403);
+        }
+
+        $request->validate([
+            'status' => 'required|string|in:published,reject',
+            'reason' => 'string',
+        ]);
+
+        $user_id =  $article->user_id;
+        $email = User::find($user_id)->email;
+
+        if ($request->status === 'published') {
+            $article->status = 'published';
+            $article->save();
+            Mail::to($email)->send(new ArticleStatus($article->title, 'published'));
+        }
+        if ($request->status === 'reject') {
+            Mail::to($email)->send(new ArticleStatus($article->title, 'reject', $request->reason));
+            $article->status = 'unpublished';
+            $article->save();
+        }
+
+        return $this->handleSuccess($article, 'article status updated successfully');
+    }
+    public function approveReversion(Request $request, ReversionArticle $reversion)
+    {
+        if (!$request->user()->hasRole('admin')) {
+            return  $this->handleError('Unauthorized', 403);
+        }
+
+        $request->validate([
+            'status' => 'required|string|in:published,reject',
+            'reason' => 'string',
+        ]);
+
+        $user_id =  $reversion->user_id;
+        $email = User::find($user_id)->email;
+
+        if ($request->status === 'published') {
+            $reversion->status = 'published';
+            $reversion->save();
+            Mail::to($email)->send(new ArticleStatus($reversion->title, 'published'));
+        }
+        if ($request->status === 'reject') {
+            Mail::to($email)->send(new ArticleStatus($reversion->title, 'reject', $request->reason));
+            $reversion->status = 'unpublished';
+            $reversion->save();
+        }
+
+        return $this->handleSuccess($reversion, 'reversion status updated successfully');
     }
 }

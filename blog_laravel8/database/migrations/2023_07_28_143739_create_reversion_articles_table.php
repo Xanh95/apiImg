@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateArticleDetailsTable extends Migration
+class CreateReversionArticlesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,18 +13,23 @@ class CreateArticleDetailsTable extends Migration
      */
     public function up()
     {
-        Schema::create('article_details', function (Blueprint $table) {
+        Schema::create('reversion_articles', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->unsignedBigInteger('article_id');
+            $table->string('thumbnail');
+            $table->string('new_thumbnail');
+            $table->integer('user_id');
+            $table->integer('article_id');
             $table->text('description');
             $table->text('content');
+            $table->text('category_ids');
             $table->text('seo_content');
             $table->text('seo_description');
-            $table->text('seo_title');
+            $table->string('seo_title');
             $table->text('slug');
-            $table->text('language');
-            $table->foreign('article_id')->references('id')->on('articles')->onDelete('cascade');
+            $table->softDeletes();
+            $table->enum('status', ['unpublished', 'published', 'draft', 'pending'])->default('pending');
+            $table->text('type');
             $table->timestamps();
         });
     }
@@ -36,6 +41,6 @@ class CreateArticleDetailsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('article_details');
+        Schema::dropIfExists('reversion_articles');
     }
 }

@@ -13,16 +13,18 @@ class Article extends Model
 {
     use HasFactory, SoftDeletes;
     protected $fillable = [
-        'name',
+        'title',
         'status',
         'type',
         'description',
+        'seo_description',
+        'seo_title',
+        'seo_content',
         'user_id',
         'slug',
     ];
-    public function categories()
+    public function category()
     {
-
         return $this->belongsToMany(Category::class);
     }
     public function articleMeta()

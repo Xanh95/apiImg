@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Mail\ArticleStatus;
 
 
-class ArticleController extends Controller
+class ArticleController extends ResponseApiController
 {
     //
     public function index(Request $request)
@@ -30,9 +30,9 @@ class ArticleController extends Controller
         $languages = config('app.languages');
         $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
-        $sort_option = ['name', 'created_at', 'updated_at'];
+        $sort_option = ['title', 'created_at', 'updated_at'];
         $sort_by = $request->input('sort_by');
-        $status = in_array($status, $layout_status) ? $status : 'active';
+        $status = in_array($status, $layout_status) ? $status : 'published';
         $sort = in_array($sort, $sort_types) ? $sort : 'desc';
         $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
         $search = $request->input('query');
@@ -40,12 +40,11 @@ class ArticleController extends Controller
         $language = $request->language;
         $language = in_array($language, $languages) ? $language : '';
         $query = Article::select('*');
-
         if ($status) {
             $query = $query->where('status', $status);
         }
         if ($search) {
-            $query = $query->where('name', 'LIKE', '%' . $search . '%');
+            $query = $query->where('title', 'LIKE', '%' . $search . '%');
         }
         if ($language) {
             $query = $query->whereHas('articleDetail', function ($q) use ($language) {
@@ -57,9 +56,10 @@ class ArticleController extends Controller
         }
         $articles = $query->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($articles as $article) {
-            $url_ids = $article->articleMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-            if (!$url_ids->isEmpty()) {
-                $url_ids = explode('-', $url_ids[0]);
+            $article->category = implode('-', $article->category()->pluck('category_id')->toArray());
+            $url_ids = $article->thumbnail;
+            if ($url_ids) {
+                $url_ids = explode('-', $url_ids);
                 foreach ($url_ids as $url_id) {
                     $image[] = Upload::find($url_id)->url;
                 }
@@ -67,7 +67,7 @@ class ArticleController extends Controller
             }
         }
 
-        return $this->handleSuccess($articles, 'Posts data');
+        return $this->handleSuccess($articles, 'article data');
     }
     public function store(Request $request)
     {
@@ -76,10 +76,13 @@ class ArticleController extends Controller
         }
 
         $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
+            'title' => 'required',
             'type' => 'required',
             'description' => 'required',
+            'content' => 'required',
+            'seo_title' => 'required',
+            'seo_description' => 'required',
+            'seo_content' => 'required',
             'category_id' => 'required|array',
         ], [
             'name.required' => 'A name is required',
@@ -89,53 +92,54 @@ class ArticleController extends Controller
             'type.required' => 'A type is required',
         ]);
 
-        $name = $request->name;
+        $title = $request->title;
         $description = $request->description;
         $languages = config('app.languages');
-        $slug =  Str::slug($name);
+        $slug =  Str::slug($title);
         $user = Auth::id();
         $article = new Article;
         $category_ids = $request->category_id;
         $data_article_meta = $request->article_metas;
-        $data_article_meta['url_id'] = $request->url_id;
+        $url_ids = $request->url_id;
         $content = $request->content;
+        $seo_title = $request->seo_title;
+        $seo_content = $request->content;
+        $seo_description = $request->description;
 
         $article->user_id = $user;
+        $article->seo_title = $seo_title;
+        $article->seo_content = $seo_content;
+        $article->seo_description = $seo_description;
         $article->slug = $slug;
-        $article->name = $name;
+        $article->title = $title;
         $article->status = 'pending';
         $article->type = $request->type;
         $article->description = $description;
         $article->content = $content;
+        $article->thumbnail = implode('-', $url_ids);
+        CheckUsed($url_ids);
         $article->save();
         foreach ($languages as $language) {
             $article_detail = new ArticleDetail();
-            $article_detail->name = translate($language, $name);
-            $article_detail->slug = str_replace(' ', '-', $article_detail->name);
+            $article_detail->title = translate($language, $title);
+            $article_detail->slug = str_replace(' ', '-', $article_detail->title);
             $article_detail->description = translate($language, $description);
             $article_detail->content = translate($language, $content);
+            $article_detail->seo_content = translate($language, $seo_content);
+            $article_detail->seo_description = translate($language, $seo_description);
+            $article_detail->seo_title = translate($language, $seo_title);
             $article_detail->article_id = $article->id;
             $article_detail->language = $language;
             $article_detail->save();
         }
         if ($data_article_meta) {
-            if ($data_article_meta['url_id']) {
-                $article_meta = new Article();
-                $article_meta->meta_key = 'url_id';
-                $article_meta->meta_value = implode('-', $data_article_meta['url_id']);
-                CheckUsed($data_article_meta['url_id']);
-                $article_meta->article_id = $article->id;
-                $article_meta->save();
-            }
             $article_meta = new Article;
             foreach ($data_article_meta as $key => $value) {
-                if ($key != 'url_id') {
-                    $article_meta = new ArticleMeta();
-                    $article_meta->meta_key = $key;
-                    $article_meta->meta_value = $value;
-                    $article_meta->article_id = $article->id;
-                    $article_meta->save();
-                }
+                $article_meta = new ArticleMeta();
+                $article_meta->meta_key = $key;
+                $article_meta->meta_value = $value;
+                $article_meta->article_id = $article->id;
+                $article_meta->save();
             }
         }
         $article->Category()->sync($category_ids);
@@ -156,9 +160,9 @@ class ArticleController extends Controller
         }
         $article->categories = $article->category()->where('status', 'active')->pluck('name');
         $article->article_meta = $article->articleMeta()->get();
-        $url_ids = $article->articleMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-        if (!$url_ids->isEmpty()) {
-            $url_ids = explode('-', $url_ids[0]);
+        $url_ids = $article->thumbnail;
+        if ($url_ids) {
+            $url_ids = explode('-', $url_ids);
             foreach ($url_ids as $url_id) {
                 $image[] = Upload::find($url_id)->url;
             }
@@ -173,78 +177,84 @@ class ArticleController extends Controller
         if (!$request->user()->hasPermission('update')) {
             return $this->handleError('Unauthorized', 403);
         }
+        if ($article->status == 'published' && !$request->user()->hasRole('admin')) {
+            return $this->handleError('Unauthorized', 403);
+        }
 
         $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
+            'title' => 'required',
             'type' => 'required',
             'description' => 'required',
+            'content' => 'required',
+            'seo_title' => 'required',
+            'seo_description' => 'required',
+            'seo_content' => 'required',
             'category_id' => 'required|array',
         ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
+            'title.required' => 'A title is required',
             'description.required' => 'A status is required',
             'type.required' => 'A type is required',
         ]);
 
-        $name = $request->name;
+        $title = $request->title;
         $description = $request->description;
         $content = $request->content;
         $languages = config('app.languages');
-        $slug =  Str::slug($name);
+        $slug =  Str::slug($title);
         $user = Auth::id();
         $category_ids = $request->category_id;
         $data_article_meta = $request->article_metas;
-        $data_article_meta['url_id'] = $request->url_id;
+        $url_ids = $request->url_id;
+        $seo_title = $request->seo_title;
+        $seo_content = $request->seo_content;
+        $seo_description = $request->seo_description;
+        $current_url = $article->thumbnail;
 
+        $article->seo_title = $seo_title;
+        $article->seo_content = $seo_content;
+        $article->seo_description = $seo_description;
         $article->user_id = $user;
         $article->slug = $slug;
-        $article->name = $name;
+        $article->title = $title;
         $article->type = $request->type;
         $article->description = $description;
         $article->content = $content;
-        $article->save();
-        $article->articleDetail()->delete();
-        foreach ($languages as $language) {
-            $article_detail = new ArticleDetail;
-            $article_detail->name = translate($language, $name);
-            $article_detail->slug = str_replace(' ', '-', $article_detail->name);
-            $article_detail->description = translate($language, $description);
-            $article_detail->content = translate($language, $content);
-            $article_detail->article_id = $article->id;
-            $article_detail->language = $language;
-            $article_detail->save();
-        }
-        if ($data_article_meta) {
-            $article->articleMeta()->where('meta_key', '!=', 'url_id')->delete();
-            if (isset($data_article_meta['url_id'])) {
-                $current_url_ids = $article->articleMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                $current_url_ids = explode('-', $current_url_ids[0]);
+        $article->status = 'pending';
+        if ($request->has('url_id')) {
+            if ($current_url) {
+                $current_url_ids = explode('-', $current_url);
                 foreach ($current_url_ids as $current_url_id) {
                     $image = Upload::find($current_url_id);
                     $path = str_replace(url('/') . '/storage', 'public', $image->url);
                     Storage::delete($path);
                     $image->delete();
                 }
-                $article->articleMeta()->delete();
-                CheckUsed($data_article_meta['url_id']);
-                $url_ids = implode('-', $data_article_meta['url_id']);
+            }
+            $article->thumbnail = implode('-', $url_ids);
+            CheckUsed($url_ids);
+        }
+        $article->save();
+        $article->articleDetail()->delete();
+        foreach ($languages as $language) {
+            $article_detail = new ArticleDetail;
+            $article_detail->title = translate($language, $title);
+            $article_detail->slug = str_replace(' ', '-', $article_detail->title);
+            $article_detail->description = translate($language, $description);
+            $article_detail->content = translate($language, $content);
+            $article_detail->seo_content = translate($language, $seo_content);
+            $article_detail->seo_description = translate($language, $seo_description);
+            $article_detail->seo_title = translate($language, $seo_title);
+            $article_detail->article_id = $article->id;
+            $article_detail->language = $language;
+            $article_detail->save();
+        }
+        if ($data_article_meta) {
+            foreach ($data_article_meta as $key => $value) {
                 $article_meta = new ArticleMeta();
-                $article_meta->meta_key = 'url_id';
-                $article_meta->meta_value = $url_ids;
+                $article_meta->meta_key = $key;
+                $article_meta->meta_value = $value;
                 $article_meta->article_id = $article->id;
                 $article_meta->save();
-            }
-
-            foreach ($data_article_meta as $key => $value) {
-                if ($key != 'url_id') {
-                    $article_meta = new ArticleMeta();
-                    $article_meta->meta_key = $key;
-                    $article_meta->meta_value = $value;
-                    $article_meta->article_id = $article->id;
-                    $article_meta->save();
-                }
             }
         }
         $article->Category()->sync($category_ids);
@@ -294,13 +304,15 @@ class ArticleController extends Controller
             $article->status = 'unpublished';
             $article->save();
             if ($type === 'force_delete') {
-                $current_url_ids = $article->articleMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                $current_url_ids = explode('-', $current_url_ids[0]);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
+                $current_url = $article->thumbnail;
+                if ($current_url) {
+                    $current_url_ids = explode('-', $current_url);
+                    foreach ($current_url_ids as $current_url_id) {
+                        $image = Upload::find($current_url_id);
+                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                        Storage::delete($path);
+                        $image->delete();
+                    }
                 }
 
                 $article->forceDelete();
@@ -322,50 +334,27 @@ class ArticleController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max: 255',
+            'title' => 'required|string|max: 255',
             'description' => 'string',
         ]);
 
         $language = $request->language;
-        $name = $request->name;
-        $slug =  Str::slug($name);
+        $title = $request->title;
+        $description = $request->description;
+        $content = $request->content;
+        $slug =  Str::slug($title);
 
         if (!($language && in_array($language, config('app.languages')))) {
             return $this->handleError('Not Found Language', 404);
         }
         $article_detail = $article->articleDetail()->where('language', $language)->first();
-        $article_detail->name = $name;
+        $article_detail->title = $title;
         $article_detail->slug = $slug;
-        $article_detail->description = $request->description;
+        $article_detail->description = $description;
+        $article_detail->content = $content;
         $article_detail->save();
-        return $this->handleSuccess($article_detail, 'Post detail updated successfully');
-    }
-    public function status(Request $request, Article $article)
-    {
-        if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
-        }
-
-        $request->validate([
-            'status' => 'required|string|in:published,reject',
-            'reason' => 'string',
-        ]);
-
-        $user_id =  $article->user_id;
-        $email = User::find($user_id)->email;
-
-        if ($request->status === 'published') {
-            $article->status = 'published';
-            $article->save();
-            Mail::to($email)->send(new ArticleStatus($article, 'published'));
-        }
-        if ($request->status === 'reject') {
-            Mail::to($email)->send(new ArticleStatus($article, 'reject', $request->reason));
-
-            $article->status = 'pending';
-            $article->save();
-        }
-
-        return $this->handleResponse($article, 'article status updated successfully');
+        $article->status = 'pending';
+        $article->save();
+        return $this->handleSuccess($article_detail, 'article detail updated successfully');
     }
 }

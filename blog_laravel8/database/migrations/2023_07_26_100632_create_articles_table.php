@@ -20,9 +20,12 @@ class CreateArticlesTable extends Migration
             $table->integer('user_id');
             $table->text('description');
             $table->text('content');
+            $table->text('seo_content');
+            $table->text('seo_description');
+            $table->string('seo_title');
             $table->text('slug');
             $table->softDeletes();
-            $table->enum('status', ['unpublished', 'published', 'draft', 'review'])->default('draft');
+            $table->enum('status', ['unpublished', 'published', 'draft', 'pending'])->default('pending');
             $table->text('type');
             $table->timestamps();
         });

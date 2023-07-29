@@ -338,6 +338,7 @@ class PostController extends ResponseApiController
 
         $language = $request->language;
         $name = $request->name;
+        $description = $request->description;
         $slug =  Str::slug($name);
 
         if (!($language && in_array($language, config('app.languages')))) {
@@ -346,8 +347,10 @@ class PostController extends ResponseApiController
         $post_detail = $post->postDetail()->where('language', $language)->first();
         $post_detail->name = $name;
         $post_detail->slug = $slug;
-        $post_detail->description = $request->description;
+        $post_detail->description = $description;
         $post_detail->save();
+        $post->status = 'pending';
+        $post->save();
         return $this->handleSuccess($post_detail, 'Post detail updated successfully');
     }
 }

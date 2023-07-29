@@ -37,14 +37,11 @@ class ArticlePolicy
 
     public function update(User $user, Article $article)
     {
-        return $user->hasPermission('update');
+        return $user->hasPermission('update') || $article->user_id == $user->id;
     }
 
     public function delete(User $user)
     {
         return $user->hasPermission('delete');
-    }
-    public function status(User $user, Article $article)
-    {
     }
 }

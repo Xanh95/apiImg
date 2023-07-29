@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ReversionArticle;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Passport\Passport;
@@ -22,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
         Post::class => PostPolicy::class,
         Article::class => ArticlePolicy::class,
         Category::class => CategoryPolicy::class,
+        ReversionArticle::class => ReversionArticlePolicy::class,
     ];
 
     /**

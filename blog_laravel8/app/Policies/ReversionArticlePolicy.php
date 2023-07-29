@@ -4,11 +4,13 @@ namespace App\Policies;
 
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Models\Article;
+use App\Traits\HasPermissionsTrait;
+use App\Models\ReversionArticle;
 
-class UserPolicy
+class ReversionArticlePolicy
 {
     use HandlesAuthorization;
+    use HandlesAuthorization, HasPermissionsTrait;
 
     public function before(User $user)
     {
@@ -22,26 +24,13 @@ class UserPolicy
         return $user->hasPermission('create');
     }
 
-    public function viewAny(User $user)
+    public function update(User $user, ReversionArticle $reversion)
     {
         return $user->hasPermission('update');
-    }
-
-    public function update(User $user, User $targetUser)
-    {
-        return $user->id === $targetUser->id || $user->hasPermission('update');
-    }
-
-    public function view(User $user)
-    {
-        return $user->hasPermission('view');
     }
 
     public function delete(User $user)
     {
         return $user->hasPermission('delete');
-    }
-    public function approve(User $user, Article $article)
-    {
     }
 }

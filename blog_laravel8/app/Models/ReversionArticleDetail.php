@@ -5,13 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ArticleDetail extends Model
+class ReversionArticleDetail extends Model
 {
     use HasFactory;
     protected $fillable = [
         'title',
         'seo_title',
-        'article_id',
+        'reversion_article_id',
         'description',
         'seo_description',
         'content',
@@ -19,8 +19,8 @@ class ArticleDetail extends Model
         'slug',
         'language',
     ];
-    function article()
+    function ReversionArticle()
     {
-        return $this->belongsTo(Article::class);
+        return $this->belongsTo(ReversionArticle::class);
     }
 }

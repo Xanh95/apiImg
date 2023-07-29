@@ -17,13 +17,13 @@ class UploadController extends ResponseApiController
     {
         $request->validate([
             'images.*' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'object' => 'required'
+            'object' => 'required|in:category,post,article,user'
         ]);
 
         $images = $request->images;
         $object = $request->object;
         $dirUpload = "public/upload/$object/" . date('Y/m/d');
-        $urls = [];
+
         $option_sizes = [
             '100x2000',
             '200x2000',
@@ -60,11 +60,13 @@ class UploadController extends ResponseApiController
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             $upload->url = $imageUrl;
             $upload->user_id = Auth::id();
+            $upload->width = $crop_width;
+            $upload->height = $crop_height;
             $upload->save();
-            $url_ids[] = $upload->id;
+            $data[] = $upload;
         }
 
 
-        return $this->handleSuccess($url_ids, "upload image $object");
+        return $this->handleSuccess($data, "upload image $object");
     }
 }
