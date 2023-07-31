@@ -220,7 +220,7 @@ class CategoryController extends ResponseApiController
                 $current_url_ids = explode('-', $category->url);
                 foreach ($current_url_ids as $current_url_id) {
                     $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
                     Storage::delete($path);
                     $image->delete();
                 }

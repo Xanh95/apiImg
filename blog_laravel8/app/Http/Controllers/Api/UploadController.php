@@ -23,6 +23,8 @@ class UploadController extends ResponseApiController
         $images = $request->images;
         $object = $request->object;
         $dirUpload = "public/upload/$object/" . date('Y/m/d');
+        $type = $request->type;
+
 
         $option_sizes = [
             '100x2000',
@@ -54,6 +56,12 @@ class UploadController extends ResponseApiController
                 Storage::makeDirectory($dirUpload, 0755, true);
             }
             $imageName = $title . '.' . $image->extension();
+            if ($type === 'avatar') {
+                $size = '300x300';
+            }
+            if ($type === 'cover_photo') {
+                $size = '1400x500';
+            }
             list($crop_width, $crop_height) = explode('x', $size);
             Image::make($image)->resize($crop_width, $crop_height)->save(storage_path('app/' . $dirUpload . '/' . $imageName));
 
@@ -68,5 +76,30 @@ class UploadController extends ResponseApiController
 
 
         return $this->handleSuccess($data, "upload image $object");
+    }
+
+    public function video(Request $request)
+    {
+        $request->validate([
+            'object' => 'required|in:category,post,article,user'
+        ]);
+
+        $video = $request->video;
+        $object = $request->object;
+        $dirUpload = "public/upload/video/$object/" . date('Y/m/d');
+        $upload = new Upload;
+        $title = Str::random(10);
+
+        if (!Storage::exists($dirUpload)) {
+            Storage::makeDirectory($dirUpload, 0755, true);
+        }
+        $videoName = $title . '.' . $video->extension();
+        $video->storeAs($dirUpload, $videoName);
+        $videoUrl = asset(Storage::url($dirUpload . '/' . $videoName));
+        $upload->url = $videoUrl;
+        $upload->user_id = Auth::id();
+        $upload->save();
+
+        return $this->handleSuccess($upload, 'upload video success');
     }
 }

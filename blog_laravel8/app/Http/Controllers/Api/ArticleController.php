@@ -116,8 +116,10 @@ class ArticleController extends ResponseApiController
         $article->type = $request->type;
         $article->description = $description;
         $article->content = $content;
-        $article->thumbnail = implode('-', $url_ids);
-        CheckUsed($url_ids);
+        if ($url_ids) {
+            $article->thumbnail = implode('-', $url_ids);
+            CheckUsed($url_ids);
+        }
         $article->save();
         foreach ($languages as $language) {
             $article_detail = new ArticleDetail();

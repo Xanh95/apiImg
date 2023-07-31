@@ -28,7 +28,7 @@ class CreateReversionArticlesTable extends Migration
             $table->string('seo_title');
             $table->text('slug');
             $table->softDeletes();
-            $table->enum('status', ['unpublished', 'published', 'draft', 'pending'])->default('pending');
+            $table->enum('status', ['unpublished', 'published', 'draft', 'pending'])->default('unpublished');
             $table->text('type');
             $table->timestamps();
         });

@@ -35,6 +35,14 @@ class ReversionArticleController extends ResponseApiController
             'category_ids' => 'required',
         ]);
 
+        $last_version_of_reversion = ReversionArticle::where('article_id', $article->id)->orderByDesc('version')
+            ->first();
+        if ($last_version_of_reversion) {
+            $version = $last_version_of_reversion->version + 1;
+        } else {
+            $version = 1;
+        }
+        // dd($last_version_of_reversion);
         $reversion = new ReversionArticle;
         $reversion_metas = $request->reversion_metas;
         $reversion_title = $request->title;
@@ -49,6 +57,7 @@ class ReversionArticleController extends ResponseApiController
         $languages = config('app.languages');
         $reversion_category_ids = $request->category_ids;
 
+        $reversion->version = $version;
         $reversion->title = $reversion_title;
         $reversion->thumbnail = $reversion_thumbnail;
         if ($reversion_new_thumbnail) {
@@ -63,7 +72,7 @@ class ReversionArticleController extends ResponseApiController
         $reversion->seo_description = $reversion_seo_description;
         $reversion->seo_title = $reversion_seo_title;
         $reversion->slug = Str::slug($reversion_title);
-        $reversion->status = 'pending';
+        $reversion->status = 'unpublished';
         $reversion->type = $reversion_type;
         $reversion->category_ids = $reversion_category_ids;
         $reversion->save();
@@ -109,7 +118,7 @@ class ReversionArticleController extends ResponseApiController
         $sort_option = ['title', 'created_at', 'updated_at', 'article_id'];
         $sort_by = $request->input('sort_by');
         $status = in_array($status, $layout_status) ? $status : 'published';
-        $sort = in_array($sort, $sort_types) ? $sort : 'desc';
+        $sort = in_array($sort, $sort_types) ? $sort : 'asc';
         $sort_by = in_array($sort_by, $sort_option) ? $sort_by : 'created_at';
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
@@ -128,26 +137,29 @@ class ReversionArticleController extends ResponseApiController
             $query = $query->where('title', 'LIKE', '%' . $search . '%');
         }
         if ($language) {
-            $query = $query->whereHas('articleDetail', function ($q) use ($language) {
+            $query = $query->whereHas('ReversionArticleDetail', function ($q) use ($language) {
                 $q->where('language', $language);
             });
-            $query = $query->with(['articleDetail' => function ($q) use ($language) {
+            $query = $query->with(['ReversionArticleDetail' => function ($q) use ($language) {
                 $q->where('language', $language);
             }]);
         }
+        $count = count($query->get());
         $reversions = $query->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($reversions as $reversion) {
             $url_ids = $reversion->thumbnail;
             if ($url_ids) {
                 $url_ids = explode('-', $url_ids);
                 foreach ($url_ids as $url_id) {
+                    $image = [];
                     $image[] = Upload::find($url_id)->url;
                 }
                 $reversion->image = $image;
             }
         }
+        $data = ['reversions' => $reversions, 'count' => $count];
 
-        return $this->handleSuccess($reversions, 'article data');
+        return $this->handleSuccess($data, 'article data');
     }
     public function edit(Request $request, ReversionArticle $reversion)
     {
@@ -228,7 +240,7 @@ class ReversionArticleController extends ResponseApiController
         $reversion->seo_description = $reversion_seo_description;
         $reversion->seo_title = $reversion_seo_title;
         $reversion->slug = Str::slug($reversion_title);
-        $reversion->status = 'pending';
+        $reversion->status = 'unpublished';
         $reversion->type = $reversion_type;
         $reversion->category_ids = $reversion_category_ids;
         $reversion->save();
@@ -356,88 +368,16 @@ class ReversionArticleController extends ResponseApiController
         $reversion->save();
         return $this->handleSuccess($reversion_detail, 'reversion detail updated successfully');
     }
-    public function updateArticle(Request $request, ReversionArticle $reversion)
+    public function pending(Request $request, ReversionArticle $reversion)
     {
 
         if (!$request->user()->hasPermission('update')) {
             return  $this->handleError('Unauthorized', 403);
         }
 
-        $article = Article::find($reversion->article_id);
-        $languages = config('app.languages');
-        $reversion_detail = $reversion->ReversionArticleDetail();
-        $reversion_metas = $reversion->ReversionArticleMeta();
-        $current_thumbnail = $article->thumbnail;
-        $new_thumbnail = $reversion->new_thumbnail;
+        $reversion->status = 'pending';
+        $reversion->save();
 
-        $article->title = $reversion->title;
-        $article->description = $reversion->description;
-        $article->content = $reversion->content;
-        $article->seo_content = $reversion->seo_content;
-        $article->seo_description = $reversion->seo_description;
-        $article->seo_title = $reversion->seo_title;
-        $article->thumbnail = $reversion->new_thumbnail;
-        $article->user_id = $reversion->user_id;
-        $article->title = $reversion->title;
-        $article->slug = $reversion->slug;
-        $article->status = 'published';
-        $article->type = $reversion->type;
-        if ($new_thumbnail) {
-            $article->thumbnail = $new_thumbnail;
-            $current_url = $current_thumbnail;
-            if ($current_url) {
-                $current_url_ids = explode('-', $current_url);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
-            }
-        }
-        $article->save();
-        if ($reversion_detail->exists()) {
-            foreach ($languages as $language) {
-                $article_detail = $article->ArticleDetail()->where('language', $language)->first();
-                $reversion_detail = $reversion->ReversionArticleDetail()->where('language', $language)->first();
-                $article_detail->title = $reversion_detail->title;
-                $article_detail->content = $reversion_detail->content;
-                $article_detail->description = $reversion_detail->description;
-                $article_detail->seo_content = $reversion_detail->seo_content;
-                $article_detail->seo_description = $reversion_detail->seo_description;
-                $article_detail->seo_title = $reversion_detail->seo_title;
-                $article_detail->slug = $reversion_detail->slug;
-                $article_detail->save();
-            }
-        }
-        if ($reversion_metas->exists()) {
-            $article_metas = $article->ArticleMeta();
-            $article_metas->delete();
-            foreach ($reversion_metas->get() as $reversion_meta) {
-                $article_meta = new ArticleMeta;
-                $article_meta->meta_key = $reversion_meta->meta_key;
-                $article_meta->meta_value = $reversion_meta->meta_value;
-                $article_meta->article_id = $article->id;
-                $article_meta->save();
-            }
-        }
-        $other_reversions = ReversionArticle::where('article_id', $article->id)->where('id', '!=', $reversion->id);
-        foreach ($other_reversions->get() as $other_reversion) {
-            $new_thumbnail = $other_reversion->new_thumbnail;
-            if ($new_thumbnail) {
-                $article->thumbnail = $new_thumbnail;
-                $current_url = $current_thumbnail;
-                if ($current_url) {
-                    $current_url_ids = explode('-', $current_url);
-                    foreach ($current_url_ids as $current_url_id) {
-                        $image = Upload::find($current_url_id);
-                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                        Storage::delete($path);
-                        $image->delete();
-                    }
-                }
-            }
-        }
-        $other_reversions->delete();
+        return $this->handleSuccess($reversion, 'request to edit the article');
     }
 }

@@ -76,7 +76,8 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/delete/reversion', [App\Http\Controllers\Api\ReversionArticleController::class, 'destroy'])->can('create', ReversionArticle::class);
     Route::post('/restore/reversion', [App\Http\Controllers\Api\ReversionArticleController::class, 'restore'])->can('delete', ReversionArticle::class);
     Route::post('/edit/reversion-detail/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'updateDetails'])->can('update', 'reversion');
-    Route::post('/update/reversion-for-article/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'updateArticle'])->can('update', 'reversion');
+    Route::post('/pending/reversion/article/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'pending'])->can('update', 'reversion');
+
 
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store'])->can('create', Category::class);
@@ -86,8 +87,14 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('restore/category', [App\Http\Controllers\Api\CategoryController::class, 'restore'])->can('delete', Category::class);
     Route::get('/category', [App\Http\Controllers\Api\CategoryController::class, 'index']);
 
-    // upload image
+    // upload 
     Route::post('/upload/image', [App\Http\Controllers\Api\UploadController::class, 'store']);
+    Route::post('/upload/video', [App\Http\Controllers\Api\UploadController::class, 'video']);
+
+    // topage 
+    Route::post('create/toppage', [App\Http\Controllers\Api\ToppageController::class, 'store']);
+    Route::post('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'update']);
+    Route::get('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'edit']);
 
     // photo
     Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);
