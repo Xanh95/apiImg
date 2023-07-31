@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Gate;
 use Laravel\Passport\Passport;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Policies\PostPolicy;
+use App\Policies\ArticlePolicy;
+use App\Policies\CategoryPolicy;
+use App\Policies\ReversionArticlePolicy;
 
 
 class AuthServiceProvider extends ServiceProvider

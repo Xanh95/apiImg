@@ -20,64 +20,12 @@ use App\Models\Upload;
 use App\Mail\ArticleStatus;
 use App\Models\Article;
 use App\Models\ReversionArticle;
+use App\Models\ArticleMeta;
 
 class UserController extends ResponseApiController
 {
     //
-    public function register(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
-            'name' => 'required|max:150',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-        ]);
 
-        $user = new User;
-        $url_id = $request->url_id;
-        $pin = random_int(100000, 999999);
-
-        if ($url_id) {
-            $user->avatar = implode('-', $url_id);
-        }
-        $user->email = $request->email;
-        $user->name = $request->name;
-        $user->password = Hash::make($request->password);
-        $user->pin = $pin;
-        $user->save();
-        $user->roles()->sync(2);
-        // event(new Registered($user));
-
-        $url_id = explode('-', $user->avatar);
-
-        if ($url_id) {
-            foreach ($url_id as $id) {
-                $avatar[] = Upload::find($id)->url;
-            }
-            $user->avatar = $avatar;
-        }
-        Mail::to($user->email)->send(new VerifyPin($pin));
-
-        return $this->handleSuccess($user, 'success');
-    }
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|min:8',
-        ]);
-        if (Auth::attempt([
-            'email' => $request->email,
-            'password' => $request->password
-        ])) {
-            $user = User::whereEmail($request->email)->first();
-            $user->token = $user->createToken('App')->accessToken;
-
-            return $this->handleSuccess($user, 'success');
-        }
-
-        return $this->handleError('wrong password or email', 401);
-    }
     public function userInfo(Request $request)
     {
         $user = $request->user('api');
@@ -421,15 +369,93 @@ class UserController extends ResponseApiController
         $email = User::find($user_id)->email;
 
         if ($request->status === 'published') {
-            $reversion->status = 'published';
-            $reversion->save();
-            Mail::to($email)->send(new ArticleStatus($reversion->title, 'published'));
+            $article = Article::find($reversion->article_id);
+            $languages = config('app.languages');
+            $reversion_detail = $reversion->ReversionArticleDetail();
+            $reversion_metas = $reversion->ReversionArticleMeta();
+            $current_thumbnail = $article->thumbnail;
+            $new_thumbnail = $reversion->new_thumbnail;
+            $category_ids = explode('-', $reversion->category_ids);
+
+            $article->title = $reversion->title;
+            $article->description = $reversion->description;
+            $article->content = $reversion->content;
+            $article->seo_content = $reversion->seo_content;
+            $article->seo_description = $reversion->seo_description;
+            $article->seo_title = $reversion->seo_title;
+            $article->user_id = $reversion->user_id;
+            $article->title = $reversion->title;
+            $article->slug = $reversion->slug;
+            $article->status = 'published';
+            $article->type = $reversion->type;
+            if ($new_thumbnail) {
+                $article->thumbnail = $new_thumbnail;
+                $current_url = $current_thumbnail;
+                if ($current_url) {
+                    $current_url_ids = explode('-', $current_url);
+                    foreach ($current_url_ids as $current_url_id) {
+                        $image = Upload::find($current_url_id);
+                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                        Storage::delete($path);
+                        $image->delete();
+                    }
+                }
+            }
+            $article->save();
+            if ($reversion_detail->exists()) {
+                foreach ($languages as $language) {
+                    $article_detail = $article->ArticleDetail()->where('language', $language)->first();
+                    $reversion_detail = $reversion->ReversionArticleDetail()->where('language', $language)->first();
+                    $article_detail->title = $reversion_detail->title;
+                    $article_detail->content = $reversion_detail->content;
+                    $article_detail->description = $reversion_detail->description;
+                    $article_detail->seo_content = $reversion_detail->seo_content;
+                    $article_detail->seo_description = $reversion_detail->seo_description;
+                    $article_detail->seo_title = $reversion_detail->seo_title;
+                    $article_detail->slug = $reversion_detail->slug;
+                    $article_detail->save();
+                }
+            }
+            if ($reversion_metas->exists()) {
+                $article_metas = $article->ArticleMeta();
+                $article_metas->delete();
+                foreach ($reversion_metas->get() as $reversion_meta) {
+                    $article_meta = new ArticleMeta;
+                    $article_meta->meta_key = $reversion_meta->meta_key;
+                    $article_meta->meta_value = $reversion_meta->meta_value;
+                    $article_meta->article_id = $article->id;
+                    $article_meta->save();
+                }
+            }
+            $other_reversions = ReversionArticle::where('article_id', $article->id)->where('id', '!=', $reversion->id);
+            foreach ($other_reversions->get() as $other_reversion) {
+                $new_thumbnail = $other_reversion->new_thumbnail;
+                if ($new_thumbnail) {
+                    $article->thumbnail = $new_thumbnail;
+                    $current_url = $current_thumbnail;
+                    if ($current_url) {
+                        $current_url_ids = explode('-', $current_url);
+                        foreach ($current_url_ids as $current_url_id) {
+                            $image = Upload::find($current_url_id);
+                            $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                            Storage::delete($path);
+                            $image->delete();
+                        }
+                    }
+                }
+            }
+            $article->Category()->sync($category_ids);
+            $other_reversions->delete();
+            $reversion->forceDelete();
+            Mail::to($email)->send(new ArticleStatus($article->title, 'published'));
         }
         if ($request->status === 'reject') {
             Mail::to($email)->send(new ArticleStatus($reversion->title, 'reject', $request->reason));
             $reversion->status = 'unpublished';
             $reversion->save();
         }
+
+
 
         return $this->handleSuccess($reversion, 'reversion status updated successfully');
     }

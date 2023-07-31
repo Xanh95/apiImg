@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Article;
+use App\Models\ArticleMeta;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Models\ReversionArticle;
@@ -50,8 +51,8 @@ class ReversionArticleController extends ResponseApiController
 
         $reversion->title = $reversion_title;
         $reversion->thumbnail = $reversion_thumbnail;
-        $reversion->new_thumbnail = implode('-', $reversion_new_thumbnail);
         if ($reversion_new_thumbnail) {
+            $reversion->new_thumbnail = implode('-', $reversion_new_thumbnail);
             CheckUsed($reversion_new_thumbnail);
         }
         $reversion->user_id = Auth::id();
@@ -69,8 +70,8 @@ class ReversionArticleController extends ResponseApiController
 
         foreach ($languages as $language) {
             $reversion_detail = new ReversionArticleDetail;
-            $reversion_detail->title = translate($language, $reversion_detail->title);
-            $reversion_detail->slug = str_replace(' ', '-', $reversion_detail->title);
+            $reversion_detail->title = translate($language, $reversion->title);
+            $reversion_detail->slug = str_replace(' ', '-', $reversion->title);
             $reversion_detail->description = translate($language, $reversion->description);
             $reversion_detail->content = translate($language, $reversion->content);
             $reversion_detail->seo_content = translate($language, $reversion->seo_content);
@@ -160,7 +161,7 @@ class ReversionArticleController extends ResponseApiController
             $reversion->reversion_detail = $reversion->ReversionArticleDetail()->where('language', $language)->get();
         }
 
-        $reversion->article_meta = $reversion->ReversionArticleMeta()->get();
+        $reversion->reversion_meta = $reversion->ReversionArticleMeta()->get();
         $url_ids = $reversion->thumbnail;
         if ($url_ids) {
             $url_ids = explode('-', $url_ids);
@@ -195,7 +196,6 @@ class ReversionArticleController extends ResponseApiController
 
         $reversion_metas = $request->reversion_metas;
         $reversion_title = $request->title;
-        $reversion_thumbnail = $reversion->thumbnail;
         $reversion_new_thumbnail = $request->url_id;
         $reversion_description = $request->description;
         $reversion_content = $request->content;
@@ -207,7 +207,6 @@ class ReversionArticleController extends ResponseApiController
         $reversion_category_ids = $request->category_ids;
 
         $reversion->title = $reversion_title;
-        $reversion->thumbnail = $reversion_thumbnail;
         if ($reversion_new_thumbnail) {
             $current_url = $reversion->new_thumbnail;
             if ($current_url) {
@@ -236,8 +235,8 @@ class ReversionArticleController extends ResponseApiController
         $reversion->ReversionArticleDetail()->delete();
         foreach ($languages as $language) {
             $reversion_detail = new ReversionArticleDetail;
-            $reversion_detail->title = translate($language, $reversion_detail->title);
-            $reversion_detail->slug = str_replace(' ', '-', $reversion_detail->title);
+            $reversion_detail->title = translate($language, $reversion->title);
+            $reversion_detail->slug = str_replace(' ', '-', $reversion->title);
             $reversion_detail->description = translate($language, $reversion->description);
             $reversion_detail->content = translate($language, $reversion->content);
             $reversion_detail->seo_content = translate($language, $reversion->seo_content);
@@ -356,5 +355,89 @@ class ReversionArticleController extends ResponseApiController
         $reversion->status = 'pending';
         $reversion->save();
         return $this->handleSuccess($reversion_detail, 'reversion detail updated successfully');
+    }
+    public function updateArticle(Request $request, ReversionArticle $reversion)
+    {
+
+        if (!$request->user()->hasPermission('update')) {
+            return  $this->handleError('Unauthorized', 403);
+        }
+
+        $article = Article::find($reversion->article_id);
+        $languages = config('app.languages');
+        $reversion_detail = $reversion->ReversionArticleDetail();
+        $reversion_metas = $reversion->ReversionArticleMeta();
+        $current_thumbnail = $article->thumbnail;
+        $new_thumbnail = $reversion->new_thumbnail;
+
+        $article->title = $reversion->title;
+        $article->description = $reversion->description;
+        $article->content = $reversion->content;
+        $article->seo_content = $reversion->seo_content;
+        $article->seo_description = $reversion->seo_description;
+        $article->seo_title = $reversion->seo_title;
+        $article->thumbnail = $reversion->new_thumbnail;
+        $article->user_id = $reversion->user_id;
+        $article->title = $reversion->title;
+        $article->slug = $reversion->slug;
+        $article->status = 'published';
+        $article->type = $reversion->type;
+        if ($new_thumbnail) {
+            $article->thumbnail = $new_thumbnail;
+            $current_url = $current_thumbnail;
+            if ($current_url) {
+                $current_url_ids = explode('-', $current_url);
+                foreach ($current_url_ids as $current_url_id) {
+                    $image = Upload::find($current_url_id);
+                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                    Storage::delete($path);
+                    $image->delete();
+                }
+            }
+        }
+        $article->save();
+        if ($reversion_detail->exists()) {
+            foreach ($languages as $language) {
+                $article_detail = $article->ArticleDetail()->where('language', $language)->first();
+                $reversion_detail = $reversion->ReversionArticleDetail()->where('language', $language)->first();
+                $article_detail->title = $reversion_detail->title;
+                $article_detail->content = $reversion_detail->content;
+                $article_detail->description = $reversion_detail->description;
+                $article_detail->seo_content = $reversion_detail->seo_content;
+                $article_detail->seo_description = $reversion_detail->seo_description;
+                $article_detail->seo_title = $reversion_detail->seo_title;
+                $article_detail->slug = $reversion_detail->slug;
+                $article_detail->save();
+            }
+        }
+        if ($reversion_metas->exists()) {
+            $article_metas = $article->ArticleMeta();
+            $article_metas->delete();
+            foreach ($reversion_metas->get() as $reversion_meta) {
+                $article_meta = new ArticleMeta;
+                $article_meta->meta_key = $reversion_meta->meta_key;
+                $article_meta->meta_value = $reversion_meta->meta_value;
+                $article_meta->article_id = $article->id;
+                $article_meta->save();
+            }
+        }
+        $other_reversions = ReversionArticle::where('article_id', $article->id)->where('id', '!=', $reversion->id);
+        foreach ($other_reversions->get() as $other_reversion) {
+            $new_thumbnail = $other_reversion->new_thumbnail;
+            if ($new_thumbnail) {
+                $article->thumbnail = $new_thumbnail;
+                $current_url = $current_thumbnail;
+                if ($current_url) {
+                    $current_url_ids = explode('-', $current_url);
+                    foreach ($current_url_ids as $current_url_id) {
+                        $image = Upload::find($current_url_id);
+                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
+                        Storage::delete($path);
+                        $image->delete();
+                    }
+                }
+            }
+        }
+        $other_reversions->delete();
     }
 }

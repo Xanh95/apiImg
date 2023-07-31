@@ -9,7 +9,7 @@ use App\Models\ReversionArticle;
 
 class ReversionArticlePolicy
 {
-    use HandlesAuthorization;
+
     use HandlesAuthorization, HasPermissionsTrait;
 
     public function before(User $user)

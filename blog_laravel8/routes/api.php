@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Article;
 use App\Models\ReversionArticle;
 
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -22,19 +23,10 @@ use App\Models\ReversionArticle;
 
 
 
-Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'register']);
-Route::post('/login', [App\Http\Controllers\Api\UserController::class, 'login']);
+Route::post('/register', [App\Http\Controllers\Api\AuthController::class, 'register']);
+Route::post('/login', [App\Http\Controllers\Api\AuthController::class, 'login']);
 
-// verify email
-Route::get('/email/verify/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
-    ->middleware(['signed', 'throttle:6,1'])
-    ->name('verification.verify');
 
-// Resend link to verify email
-Route::post('/email/verify/resend', function (Request $request) {
-    $request->user()->sendEmailVerificationNotification();
-    return back()->with('message', 'Verification link sent!');
-})->middleware(['auth:api', 'throttle:6,1'])->name('verification.send');
 // verify email with pin
 Route::post('/verifyPin', [App\Http\Controllers\VerifyEmailController::class, 'verifyPin'])->middleware('auth:api');
 // resend link to verify email with pin
@@ -77,13 +69,14 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/restore/article', [App\Http\Controllers\Api\ArticleController::class, 'restore'])->can('delete', Article::class);
 
     // reversion article
-    Route::post('/create/reversion/article/{article}', [App\Http\Controllers\Api\ReversionArticleController::class, 'store'])->can('create', 'reversion');
-    Route::get('/reversion/article', [App\Http\Controllers\Api\ReversionArticleController::class, 'index'])->can('update', 'reversion');
+    Route::get('/reversion/article', [App\Http\Controllers\Api\ReversionArticleController::class, 'index'])->can('update', ReversionArticle::class);
+    Route::post('/create/reversion/article/{article}', [App\Http\Controllers\Api\ReversionArticleController::class, 'store'])->can('create', ReversionArticle::class);
     Route::get('edit/reversion/article/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'edit'])->can('update', 'reversion');
     Route::post('edit/reversion/article/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'update'])->can('update', 'reversion');
-    Route::post('/delete/reversion', [App\Http\Controllers\Api\ReversionArticleController::class, 'destroy']);
+    Route::post('/delete/reversion', [App\Http\Controllers\Api\ReversionArticleController::class, 'destroy'])->can('create', ReversionArticle::class);
     Route::post('/restore/reversion', [App\Http\Controllers\Api\ReversionArticleController::class, 'restore'])->can('delete', ReversionArticle::class);
     Route::post('/edit/reversion-detail/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'updateDetails'])->can('update', 'reversion');
+    Route::post('/update/reversion-for-article/{reversion}', [App\Http\Controllers\Api\ReversionArticleController::class, 'updateArticle'])->can('update', 'reversion');
 
     // category
     Route::post('create/category', [App\Http\Controllers\Api\CategoryController::class, 'store'])->can('create', Category::class);
