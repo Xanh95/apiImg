@@ -145,4 +145,18 @@ class ToppageController extends ResponseApiController
 
         return $this->handleSuccess($toppage, 'get success toppage');
     }
+    public function changeStatus(Request $request)
+    {
+        $request->validate([
+            'status' => 'in:published,unpublished',
+        ]);
+
+        $user = $request->user();
+        $toppage = $user->topPage()->first();
+        $status = $request->status;
+
+        $toppage->status = $status;
+
+        return $this->handleSuccess($toppage, "change status to $status");
+    }
 }
