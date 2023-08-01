@@ -96,6 +96,10 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'update']);
     Route::get('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'edit']);
     Route::post('change/toppage/status', [App\Http\Controllers\Api\ToppageController::class, 'changeStatus']);
+    Route::post('update/toppage/detail', [App\Http\Controllers\Api\ToppageController::class, 'updateDetails']);
+
+    // dashborad
+    Route::get('/dashboard', [App\Http\Controllers\Api\DashboardController::class, 'dashBoard']);
 
     // photo
     Route::post('save', [App\Http\Controllers\Api\PhotoController::class, 'store']);

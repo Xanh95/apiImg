@@ -25,4 +25,8 @@ class Toppage extends Model
     {
         return $this->belongsTo(User::class);
     }
+    public function TopPageDetail()
+    {
+        return $this->belongsTo(TopPageDetail::class);
+    }
 }

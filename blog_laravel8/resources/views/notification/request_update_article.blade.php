@@ -18,10 +18,10 @@
                         <span style="word-break: break-word; line-height: 32px;"> {{ $article }}
                         </span>
                         <span style="padding-left:30px;padding-right:30px;font-size:16px;display:inline-block;letter-spacing:normal;">
-                            <span style="word-break: break-word; line-height: 32px;"> {{ $status }}
+                            <span style="word-break: break-word; line-height: 32px;">
                             </span>
                             <span style="padding-left:30px;padding-right:30px;font-size:16px;display:inline-block;letter-spacing:normal;">
-                                <span style="word-break: break-word; line-height: 32px;"> {{ $reason }}
+                                <span style="word-break: break-word; line-height: 32px;"> 
                                 </span>
                             </span>
                         </a>

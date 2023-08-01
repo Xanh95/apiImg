@@ -52,8 +52,6 @@ class CategoryController extends ResponseApiController
                 foreach ($url_ids as $url_id) {
                     $image[] = Upload::find($url_id)->url;
                 }
-
-
                 $category->image = $image;
             }
         }

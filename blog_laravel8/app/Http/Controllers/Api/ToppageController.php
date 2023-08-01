@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
+use App\Models\TopPageDetail;
 
 
 class ToppageController extends ResponseApiController
@@ -26,7 +27,7 @@ class ToppageController extends ResponseApiController
             'status' => 'in:published,unpublished'
         ]);
         if ($request->user()->topPage()->exists()) {
-            return $this->handleError('had toppage', 422);
+            return $this->handleError('had top page', 422);
         }
 
         $name = $request->name;
@@ -41,38 +42,39 @@ class ToppageController extends ResponseApiController
         $video = $request->video;
         $user = $request->user();
         $user_id = $user->id;
-        $toppage = new Toppage;
+        $top_page = new Toppage;
+        $languages = config('app.languages');
 
-        $toppage->name = $name;
-        $toppage->area = $area;
-        $toppage->video = $video;
-        $toppage->about = $about;
-        $toppage->summary = $summary;
-        $toppage->cover_photo = $cover_photo;
+        $top_page->name = $name;
+        $top_page->area = $area;
+        $top_page->video = $video;
+        $top_page->about = $about;
+        $top_page->summary = $summary;
+        $top_page->cover_photo = $cover_photo;
         if ($video || $cover_photo || $avatar) {
             $ids = [$video, $cover_photo, $avatar];
             $ids = array_filter($ids);
             CheckUsed($ids);
         }
-        $toppage->avatar = $avatar;
-        $toppage->website = $website;
-        $toppage->facebook = $facebook;
-        $toppage->instagram = $instagram;
-        $toppage->user_id = $user_id;
-        $toppage->save();
+        $top_page->avatar = $avatar;
+        $top_page->website = $website;
+        $top_page->facebook = $facebook;
+        $top_page->instagram = $instagram;
+        $top_page->user_id = $user_id;
+        $top_page->save();
         foreach ($languages as $language) {
             $top_page_detail = new TopPageDetail;
-            $top_page_detail->name = translate($request->name, $language);
-            $top_page_detail->area = translate($request->area, $language);
-            $top_page_detail->about = translate($request->about, $language);
-            $top_page_detail->summary = translate($request->summary, $language);
+            $top_page_detail->name = translate($language, $name);
+            $top_page_detail->area = translate($language, $area);
+            $top_page_detail->about = translate($language, $about);
+            $top_page_detail->summary = translate($language, $summary);
             $top_page_detail->top_page_id = $top_page->id;
-            $top_page_detail->lang = $language;
+            $top_page_detail->language = $language;
             $top_page_detail->save();
         }
 
 
-        return $this->handleSuccess($toppage, 'success');
+        return $this->handleSuccess($top_page, 'success');
     }
 
     public function update(Request $request)
@@ -89,7 +91,7 @@ class ToppageController extends ResponseApiController
         ]);
 
         $user_id = Auth::id();
-        $toppage = Toppage::where('user_id', $user_id)->first();
+        $top_page = Toppage::where('user_id', $user_id)->first();
         $name = $request->name;
         $area = $request->area;
         $about = $request->about;
@@ -100,60 +102,76 @@ class ToppageController extends ResponseApiController
         $facebook = $request->facebook;
         $instagram = $request->instagram;
         $video = $request->video;
-        $current_video = $toppage->video;
-        $current_cover_photo = $toppage->cover_photo;
-        $current_avatar = $toppage->avatar;
+        $current_video = $top_page->video;
+        $current_cover_photo = $top_page->cover_photo;
+        $current_avatar = $top_page->avatar;
+        $languages = config('app.languages');
 
-        $toppage->name = $name;
-        $toppage->area = $area;
-        $toppage->about = $about;
-        $toppage->summary = $summary;
+        $top_page->name = $name;
+        $top_page->area = $area;
+        $top_page->about = $about;
+        $top_page->summary = $summary;
 
         if ($video || $cover_photo || $avatar) {
             $ids = [$video, $cover_photo, $avatar];
             $ids = array_filter($ids);
             CheckUsed($ids);
             if ($video) {
-                $toppage->video = $video;
+                $top_page->video = $video;
                 $old_video = Upload::find($current_video);
                 $path = str_replace(url('/') . '/storage', 'public', $old_video->url);
                 Storage::delete($path);
                 $old_video->delete();
             }
             if ($avatar) {
-                $toppage->avatar = $avatar;
+                $top_page->avatar = $avatar;
                 $old_avatar = Upload::find($current_avatar);
                 $path = str_replace(url('/') . '/storage', 'public', $old_avatar->url);
                 Storage::delete($path);
                 $old_avatar->delete();
             }
             if ($cover_photo) {
-                $toppage->cover_photo = $cover_photo;
+                $top_page->cover_photo = $cover_photo;
                 $old_cover_photo = Upload::find($current_cover_photo);
                 $path = str_replace(url('/') . '/storage', 'public', $old_cover_photo->url);
                 Storage::delete($path);
                 $old_cover_photo->delete();
             }
         }
-        $toppage->website = $website;
-        $toppage->facebook = $facebook;
-        $toppage->instagram = $instagram;
-        $toppage->user_id = $user_id;
+        $top_page->website = $website;
+        $top_page->facebook = $facebook;
+        $top_page->instagram = $instagram;
+        $top_page->user_id = $user_id;
+        $top_page->save();
+        $top_page->topPageDetail()->delete();
+        foreach ($languages as $language) {
+            $top_page_detail = new TopPageDetail;
+            $top_page_detail->name = translate($language, $name);
+            $top_page_detail->area = translate($language, $area);
+            $top_page_detail->about = translate($language, $about);
+            $top_page_detail->summary = translate($language, $summary);
+            $top_page_detail->top_page_id = $top_page->id;
+            $top_page_detail->language = $language;
+            $top_page_detail->save();
+        }
 
-        $toppage->save();
-
-        return $this->handleSuccess($toppage, 'success');
+        return $this->handleSuccess($top_page, 'success');
     }
 
     public function edit(Request $request)
     {
-        $user = $request->user();
-        $toppage = $user->topPage()->first();
-        $toppage->url_avatar = Upload::find($toppage->avatar)->url;
-        $toppage->url_cover_photo = Upload::find($toppage->cover_photo)->url;
-        $toppage->url_video = Upload::find($toppage->video)->url;
 
-        return $this->handleSuccess($toppage, 'get success toppage');
+        $language = $request->language;
+        $user = $request->user();
+        $top_page = $user->topPage()->first();
+
+        $top_page->url_avatar = Upload::find($top_page->avatar)->url;
+        $top_page->url_cover_photo = Upload::find($top_page->cover_photo)->url;
+        $top_page->url_video = Upload::find($top_page->video)->url;
+        if ($language) {
+            $top_page->top_page_detail = $top_page->topPageDetail()->where('language', $language)->get();
+        }
+        return $this->handleSuccess($top_page, 'get success toppage');
     }
     public function changeStatus(Request $request)
     {
@@ -171,7 +189,7 @@ class ToppageController extends ResponseApiController
     }
     public function updateDetails(Request $request, TopPage $top_page)
     {
-        if (!Auth::user()->hasPermission('update')) {
+        if ($request->user()->hasPermission('update')) {
             return $this->handleResponse([], 'Unauthorized')->setStatusCode(403);
         }
 

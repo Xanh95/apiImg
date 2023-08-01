@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Upload;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\RequestReversionArticle;
 
 
 class ReversionArticleController extends ResponseApiController
@@ -42,7 +44,6 @@ class ReversionArticleController extends ResponseApiController
         } else {
             $version = 1;
         }
-        // dd($last_version_of_reversion);
         $reversion = new ReversionArticle;
         $reversion_metas = $request->reversion_metas;
         $reversion_title = $request->title;
@@ -56,6 +57,7 @@ class ReversionArticleController extends ResponseApiController
         $reversion_type = $request->type;
         $languages = config('app.languages');
         $reversion_category_ids = $request->category_ids;
+
 
         $reversion->version = $version;
         $reversion->title = $reversion_title;
@@ -375,8 +377,14 @@ class ReversionArticleController extends ResponseApiController
             return  $this->handleError('Unauthorized', 403);
         }
 
+        $email_admin = env('Email');
+
         $reversion->status = 'pending';
         $reversion->save();
+        $version = $reversion->version;
+        $article_id = $reversion->article_id;
+        $data = "version $version article id: $article_id";
+        Mail::to($email_admin)->send(new RequestReversionArticle($data));
 
         return $this->handleSuccess($reversion, 'request to edit the article');
     }
