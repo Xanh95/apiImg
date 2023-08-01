@@ -59,8 +59,18 @@ class ToppageController extends ResponseApiController
         $toppage->facebook = $facebook;
         $toppage->instagram = $instagram;
         $toppage->user_id = $user_id;
-
         $toppage->save();
+        foreach ($languages as $language) {
+            $top_page_detail = new TopPageDetail;
+            $top_page_detail->name = translate($request->name, $language);
+            $top_page_detail->area = translate($request->area, $language);
+            $top_page_detail->about = translate($request->about, $language);
+            $top_page_detail->summary = translate($request->summary, $language);
+            $top_page_detail->top_page_id = $top_page->id;
+            $top_page_detail->lang = $language;
+            $top_page_detail->save();
+        }
+
 
         return $this->handleSuccess($toppage, 'success');
     }
@@ -158,5 +168,32 @@ class ToppageController extends ResponseApiController
         $toppage->status = $status;
 
         return $this->handleSuccess($toppage, "change status to $status");
+    }
+    public function updateDetails(Request $request, TopPage $top_page)
+    {
+        if (!Auth::user()->hasPermission('update')) {
+            return $this->handleResponse([], 'Unauthorized')->setStatusCode(403);
+        }
+
+        $request->validate([
+            'area' => 'required|regex:/^[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/',
+            'about' => 'required|string|max:200',
+            'summary' => 'required|string|max:1000',
+            'name' => 'required',
+        ]);
+
+        $language = $request->language;
+
+        if (!($language && in_array($language, config('app.languages')))) {
+            return $this->handleResponse([], 'Not Found Language');
+        }
+        $top_page_detail = $top_page->topPageDetail()->where('lang', $language)->first();
+        $top_page_detail->name = $request->name;
+        $top_page_detail->area = $request->area;
+        $top_page_detail->about = $request->about;
+        $top_page_detail->summary = $request->summary;
+        $top_page_detail->save();
+
+        return $this->handleResponse($top_page_detail, 'Top page detail updated successfully');
     }
 }

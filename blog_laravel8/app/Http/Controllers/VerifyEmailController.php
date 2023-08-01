@@ -48,6 +48,7 @@ class VerifyEmailController extends ResponseApiController
             return $this->handleError("Authentication Timeout", 410);
         }
         if ($pin == $userPin) {
+            $user->pin = '';
             $user->email_verified_at = Carbon::now();
             $user->status = 'active';
             $user->save();
