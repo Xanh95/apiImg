@@ -19,6 +19,7 @@ class ArticleDetail extends Model
         'slug',
         'language',
     ];
+
     function article()
     {
         return $this->belongsTo(Article::class);

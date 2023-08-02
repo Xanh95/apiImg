@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Article;
 use Illuminate\Http\Request;
 use App\Models\Category;
@@ -51,7 +50,6 @@ class DashboardController extends ResponseApiController
                 $article->image = $image;
             }
         }
-
         $data = [
             'count_category' => $count_category,
             'categories' => $categories,
@@ -60,6 +58,7 @@ class DashboardController extends ResponseApiController
             'count_article' => $count_article,
             'article' => $article,
         ];
+
         return $this->handleSuccess($data, 'success');
     }
 }

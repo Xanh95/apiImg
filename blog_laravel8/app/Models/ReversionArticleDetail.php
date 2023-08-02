@@ -19,6 +19,7 @@ class ReversionArticleDetail extends Model
         'slug',
         'language',
     ];
+
     function ReversionArticle()
     {
         return $this->belongsTo(ReversionArticle::class);

@@ -22,7 +22,6 @@ class CategoryTableSeeder extends Seeder
             $name = "Category number $i";
             $description = "content of Category number $i";
             $post_ids = random_int(52, 55);
-
             $category->user_id = User::whereHas('roles', function ($query) {
                 $query->where('name', 'admin')
                     ->orWhere('name', 'editor');

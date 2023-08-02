@@ -28,18 +28,22 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
     ];
+
     public function roles()
     {
         return $this->belongsToMany(Role::class);
     }
+
     public function userMeta()
     {
         return $this->hasMany(UserMeta::class);
     }
+
     public function upload()
     {
         return $this->hasMany(Upload::class);
     }
+
     public function topPage()
     {
         return $this->hasOne(Toppage::class);

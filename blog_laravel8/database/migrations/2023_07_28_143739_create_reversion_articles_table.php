@@ -19,7 +19,7 @@ class CreateReversionArticlesTable extends Migration
             $table->string('thumbnail');
             $table->string('new_thumbnail');
             $table->integer('user_id');
-            $table->integer('article_id');
+            $table->unsignedBigInteger('article_id');
             $table->text('description');
             $table->text('content');
             $table->text('category_ids');
@@ -29,6 +29,7 @@ class CreateReversionArticlesTable extends Migration
             $table->text('slug');
             $table->softDeletes();
             $table->enum('status', ['unpublished', 'published', 'draft', 'pending'])->default('unpublished');
+            $table->foreign('article_id')->references('id')->on('articles')->onDelete('cascade');
             $table->text('type');
             $table->timestamps();
         });

@@ -2,30 +2,27 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use App\Http\Requests\TopPageRequest;
 use App\Models\Toppage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
 use App\Models\TopPageDetail;
+use App\Models\User;
 
 
 class ToppageController extends ResponseApiController
 {
-    //
-    public function store(Request $request)
+    public $languages;
+
+    public function __construct()
     {
-        $request->validate([
-            'area' => 'required|regex:/^[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/',
-            'about' => 'required|string|max:200',
-            'summary' => 'required|string|max:1000',
-            'name' => 'required',
-            'facebook' => 'url|starts_with:https://www.facebook.com/',
-            'instagram' => 'url|starts_with:https://www.instagram.com/',
-            'website' => 'url',
-            'status' => 'in:published,unpublished'
-        ]);
+        $this->languages = config('app.languages');
+    }
+
+    public function store(TopPageRequest $request)
+
+    {
         if ($request->user()->topPage()->exists()) {
             return $this->handleError('had top page', 422);
         }
@@ -43,7 +40,6 @@ class ToppageController extends ResponseApiController
         $user = $request->user();
         $user_id = $user->id;
         $top_page = new Toppage;
-        $languages = config('app.languages');
 
         $top_page->name = $name;
         $top_page->area = $area;
@@ -62,7 +58,7 @@ class ToppageController extends ResponseApiController
         $top_page->instagram = $instagram;
         $top_page->user_id = $user_id;
         $top_page->save();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $top_page_detail = new TopPageDetail;
             $top_page_detail->name = translate($language, $name);
             $top_page_detail->area = translate($language, $area);
@@ -73,25 +69,16 @@ class ToppageController extends ResponseApiController
             $top_page_detail->save();
         }
 
-
         return $this->handleSuccess($top_page, 'success');
     }
 
-    public function update(Request $request)
+    public function update(TopPageRequest $request, User $user)
     {
-        $request->validate([
-            'area' => 'required|regex:/^[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/',
-            'about' => 'required|string|max:200',
-            'summary' => 'required|string|max:1000',
-            'name' => 'required',
-            'facebook' => 'url|starts_with:https://www.facebook.com/',
-            'instagram' => 'url|starts_with:https://www.instagram.com/',
-            'website' => 'url',
-            'status' => 'in:published,unpublished'
-        ]);
+        if (!$request->user()->hasPermission('update') && $request->user()->id != $user->id) {
+            return $this->handleError('Unauthorized edit top page', 403);
+        }
 
-        $user_id = Auth::id();
-        $top_page = Toppage::where('user_id', $user_id)->first();
+        $top_page = $user->topPage()->first();
         $name = $request->name;
         $area = $request->area;
         $about = $request->about;
@@ -105,7 +92,6 @@ class ToppageController extends ResponseApiController
         $current_video = $top_page->video;
         $current_cover_photo = $top_page->cover_photo;
         $current_avatar = $top_page->avatar;
-        $languages = config('app.languages');
 
         $top_page->name = $name;
         $top_page->area = $area;
@@ -141,10 +127,10 @@ class ToppageController extends ResponseApiController
         $top_page->website = $website;
         $top_page->facebook = $facebook;
         $top_page->instagram = $instagram;
-        $top_page->user_id = $user_id;
+        $top_page->user_id = $user->id;
         $top_page->save();
         $top_page->topPageDetail()->delete();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $top_page_detail = new TopPageDetail;
             $top_page_detail->name = translate($language, $name);
             $top_page_detail->area = translate($language, $area);
@@ -158,54 +144,60 @@ class ToppageController extends ResponseApiController
         return $this->handleSuccess($top_page, 'success');
     }
 
-    public function edit(Request $request)
+    public function edit(Request $request, User $user)
     {
-
         $language = $request->language;
-        $user = $request->user();
         $top_page = $user->topPage()->first();
 
-        $top_page->url_avatar = Upload::find($top_page->avatar)->url;
-        $top_page->url_cover_photo = Upload::find($top_page->cover_photo)->url;
-        $top_page->url_video = Upload::find($top_page->video)->url;
-        if ($language) {
-            $top_page->top_page_detail = $top_page->topPageDetail()->where('language', $language)->get();
+        if ($top_page) {
+            if ($top_page->url_avatar) {
+                $top_page->url_avatar = Upload::find($top_page->avatar)->url;
+            }
+            if ($top_page->url_cover_photo) {
+                $top_page->url_cover_photo = Upload::find($top_page->cover_photo)->url;
+            }
+            if ($top_page->url_video) {
+                $top_page->url_video = Upload::find($top_page->video)->url;
+            }
+            if ($language) {
+                $top_page->top_page_detail = $top_page->topPageDetail()->where('language', $language)->get();
+            }
+            return $this->handleSuccess($top_page, 'get success toppage');
         }
-        return $this->handleSuccess($top_page, 'get success toppage');
+
+        return $this->handleError('do not have top page', 404);
     }
+
     public function changeStatus(Request $request)
     {
         $request->validate([
             'status' => 'in:published,unpublished',
+        ], [
+            'status.in' => 'It should be either "published" or "unpublished"',
         ]);
 
         $user = $request->user();
-        $toppage = $user->topPage()->first();
+        $top_page = $user->topPage()->first();
         $status = $request->status;
 
-        $toppage->status = $status;
+        $top_page->status = $status;
 
-        return $this->handleSuccess($toppage, "change status to $status");
+        return $this->handleSuccess($top_page, "change status to $status");
     }
-    public function updateDetails(Request $request, TopPage $top_page)
+
+    public function updateDetails(TopPageRequest $request, User $user)
     {
-        if ($request->user()->hasPermission('update')) {
-            return $this->handleResponse([], 'Unauthorized')->setStatusCode(403);
+        if (!$request->user()->hasPermission('update') && $request->user()->id != $user->id) {
+            return $this->handleError('Unauthorized edit top page', 403);
         }
 
-        $request->validate([
-            'area' => 'required|regex:/^[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/',
-            'about' => 'required|string|max:200',
-            'summary' => 'required|string|max:1000',
-            'name' => 'required',
-        ]);
-
         $language = $request->language;
+        $top_page = $user->topPage()->first();
 
         if (!($language && in_array($language, config('app.languages')))) {
             return $this->handleResponse([], 'Not Found Language');
         }
-        $top_page_detail = $top_page->topPageDetail()->where('lang', $language)->first();
+        $top_page_detail = $top_page->topPageDetail()->where('language', $language)->first();
         $top_page_detail->name = $request->name;
         $top_page_detail->area = $request->area;
         $top_page_detail->about = $request->about;

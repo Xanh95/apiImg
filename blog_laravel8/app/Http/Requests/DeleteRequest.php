@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ApiImgrequest extends FormRequest
+class DeleteRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,7 +25,17 @@ class ApiImgrequest extends FormRequest
     {
         return [
             //
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
+            'ids' => 'required',
+            'type' => 'required|in:delete,force_delete',
+        ];
+    }
+    public function messages(): array
+    {
+        return [
+            'ids.required' => 'A ids is required',
+            'type.required' => 'A type is required',
+            'type.in' => 'A type must be deleted or force-deleted',
+
         ];
     }
 }

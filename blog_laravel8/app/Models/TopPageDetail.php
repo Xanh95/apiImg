@@ -15,6 +15,7 @@ class TopPageDetail extends Model
         'summary',
 
     ];
+
     public function topPage()
     {
         return $this->belongsTo(Toppage::class);

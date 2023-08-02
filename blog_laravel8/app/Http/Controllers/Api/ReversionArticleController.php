@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\RestoreRequest;
+use App\Http\Requests\ReversionArticleRequest;
 use App\Models\Article;
-use App\Models\ArticleMeta;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Models\ReversionArticle;
 use App\Models\ReversionArticleDetail;
@@ -20,30 +20,19 @@ use App\Mail\RequestReversionArticle;
 
 class ReversionArticleController extends ResponseApiController
 {
-    public function store(Request $request, Article $article)
+    public $languages;
+
+    public function __construct()
+    {
+        $this->languages = config('app.languages');
+    }
+
+    public function store(ReversionArticleRequest $request, Article $article)
     {
         if (!$request->user()->hasPermission('create')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized create Reversion Article', 403);
         }
 
-        $request->validate([
-            'title' => 'required',
-            'description' => 'required',
-            'content' => 'required',
-            'seo_content' => 'required',
-            'seo_description' => 'required',
-            'seo_title' => 'required',
-            'type' => 'required',
-            'category_ids' => 'required',
-        ]);
-
-        $last_version_of_reversion = ReversionArticle::where('article_id', $article->id)->orderByDesc('version')
-            ->first();
-        if ($last_version_of_reversion) {
-            $version = $last_version_of_reversion->version + 1;
-        } else {
-            $version = 1;
-        }
         $reversion = new ReversionArticle;
         $reversion_metas = $request->reversion_metas;
         $reversion_title = $request->title;
@@ -55,10 +44,14 @@ class ReversionArticleController extends ResponseApiController
         $reversion_seo_title = $request->seo_title;
         $reversion_seo_description = $request->seo_description;
         $reversion_type = $request->type;
-        $languages = config('app.languages');
         $reversion_category_ids = $request->category_ids;
+        $last_version_of_reversion = ReversionArticle::where('article_id', $article->id)->orderByDesc('version')->first();
 
-
+        if ($last_version_of_reversion) {
+            $version = $last_version_of_reversion->version + 1;
+        } else {
+            $version = 1;
+        }
         $reversion->version = $version;
         $reversion->title = $reversion_title;
         $reversion->thumbnail = $reversion_thumbnail;
@@ -79,7 +72,7 @@ class ReversionArticleController extends ResponseApiController
         $reversion->category_ids = $reversion_category_ids;
         $reversion->save();
 
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $reversion_detail = new ReversionArticleDetail;
             $reversion_detail->title = translate($language, $reversion->title);
             $reversion_detail->slug = str_replace(' ', '-', $reversion->title);
@@ -106,10 +99,11 @@ class ReversionArticleController extends ResponseApiController
 
         return $this->handleSuccess($reversion, "create success reversion $article->title");
     }
+
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized view Reversions of article', 403);
         }
 
         $status = $request->input('status');
@@ -139,9 +133,6 @@ class ReversionArticleController extends ResponseApiController
             $query = $query->where('title', 'LIKE', '%' . $search . '%');
         }
         if ($language) {
-            $query = $query->whereHas('ReversionArticleDetail', function ($q) use ($language) {
-                $q->where('language', $language);
-            });
             $query = $query->with(['ReversionArticleDetail' => function ($q) use ($language) {
                 $q->where('language', $language);
             }]);
@@ -166,7 +157,7 @@ class ReversionArticleController extends ResponseApiController
     public function edit(Request $request, ReversionArticle $reversion)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized view this reversion article', 403);
         }
 
         $language = $request->language;
@@ -185,28 +176,13 @@ class ReversionArticleController extends ResponseApiController
             $reversion->image = $image;
         }
 
-        return $this->handleSuccess($reversion, 'success');
+        return $this->handleSuccess($reversion, 'get success reversion article');
     }
-    public function update(Request $request, ReversionArticle $reversion)
+    public function update(ReversionArticleRequest $request, ReversionArticle $reversion)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized update reversion article', 403);
         }
-
-        $request->validate([
-            'title' => 'required',
-            'type' => 'required',
-            'description' => 'required',
-            'content' => 'required',
-            'seo_title' => 'required',
-            'seo_description' => 'required',
-            'seo_content' => 'required',
-            'category_ids' => 'required',
-        ], [
-            'title.required' => 'A title is required',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
 
         $reversion_metas = $request->reversion_metas;
         $reversion_title = $request->title;
@@ -217,21 +193,11 @@ class ReversionArticleController extends ResponseApiController
         $reversion_seo_title = $request->seo_title;
         $reversion_seo_description = $request->seo_description;
         $reversion_type = $request->type;
-        $languages = config('app.languages');
         $reversion_category_ids = $request->category_ids;
 
         $reversion->title = $reversion_title;
         if ($reversion_new_thumbnail) {
-            $current_url = $reversion->new_thumbnail;
-            if ($current_url) {
-                $current_url_ids = explode('-', $current_url);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
-            }
+            deleteFile($reversion->new_thumbnail);
             $reversion->new_thumbnail = implode('-', $reversion_new_thumbnail);
             CheckUsed($reversion_new_thumbnail);
         }
@@ -247,7 +213,7 @@ class ReversionArticleController extends ResponseApiController
         $reversion->category_ids = $reversion_category_ids;
         $reversion->save();
         $reversion->ReversionArticleDetail()->delete();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $reversion_detail = new ReversionArticleDetail;
             $reversion_detail->title = translate($language, $reversion->title);
             $reversion_detail->slug = str_replace(' ', '-', $reversion->title);
@@ -275,16 +241,11 @@ class ReversionArticleController extends ResponseApiController
 
         return $this->handleSuccess($reversion, "update success reversion $reversion->title");
     }
-    public function destroy(Request $request)
+    public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized delete reversion article', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-            'type' => 'required|in:delete,force_delete',
-        ]);
 
         $ids = $request->input('ids');
         $type = $request->input('type');
@@ -295,22 +256,12 @@ class ReversionArticleController extends ResponseApiController
             $reversion->status = 'unpublished';
             $reversion->save();
             if ($type === 'force_delete') {
-                $current_url = $reversion->new_thumbnail;
-                if ($current_url) {
-                    $current_url_ids = explode('-', $current_url);
-                    foreach ($current_url_ids as $current_url_id) {
-                        $image = Upload::find($current_url_id);
-                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                        Storage::delete($path);
-                        $image->delete();
-                    }
-                }
+                deleteFile($reversion->new_thumbnail);
                 $reversion->forceDelete();
             } else {
                 $reversion->delete();
             }
         }
-
         if ($type === 'force_delete') {
             return $this->handleSuccess([], 'reversion article force delete successfully!');
         } else {
@@ -318,15 +269,11 @@ class ReversionArticleController extends ResponseApiController
         }
     }
 
-    public function restore(Request $request)
+    public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized restore reversion article', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-        ]);
 
         $ids = $request->input('ids');
 
@@ -343,7 +290,7 @@ class ReversionArticleController extends ResponseApiController
     public function updateDetails(Request $request, ReversionArticle $reversion)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized update this language of reversion article', 403);
         }
 
         $request->validate([
@@ -355,6 +302,9 @@ class ReversionArticleController extends ResponseApiController
         $title = $request->title;
         $description = $request->description;
         $content = $request->content;
+        $reversion_seo_content = $request->seo_content;
+        $reversion_seo_title = $request->seo_title;
+        $reversion_seo_description = $request->seo_description;
         $slug =  Str::slug($title);
 
         if (!($language && in_array($language, config('app.languages')))) {
@@ -365,9 +315,13 @@ class ReversionArticleController extends ResponseApiController
         $reversion_detail->slug = $slug;
         $reversion_detail->description = $description;
         $reversion_detail->content = $content;
+        $reversion_detail->seo_content = $reversion_seo_content;
+        $reversion_detail->seo_title = $reversion_seo_title;
+        $reversion_detail->seo_description = $reversion_seo_description;
         $reversion_detail->save();
         $reversion->status = 'pending';
         $reversion->save();
+
         return $this->handleSuccess($reversion_detail, 'reversion detail updated successfully');
     }
     public function pending(Request $request, ReversionArticle $reversion)
@@ -386,6 +340,6 @@ class ReversionArticleController extends ResponseApiController
         $data = "version $version article id: $article_id";
         Mail::to($email_admin)->send(new RequestReversionArticle($data));
 
-        return $this->handleSuccess($reversion, 'request to edit the article');
+        return $this->handleSuccess($reversion, 'success request to edit the article');
     }
 }

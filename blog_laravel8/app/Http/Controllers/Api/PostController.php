@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\Category;
+use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\PostRequest;
+use App\Http\Requests\RestoreRequest;
 use App\Models\Post;
 use App\Models\PostDetail;
 use App\Models\PostMeta;
@@ -16,16 +17,21 @@ use App\Models\Upload;
 
 class PostController extends ResponseApiController
 {
+    public $languages;
+
+    public function __construct()
+    {
+        $this->languages = config('app.languages');
+    }
 
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view posts', 403);
         }
 
         $status = $request->input('status');
         $layout_status = ['inactive', 'active'];
-        $languages = config('app.languages');
         $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
         $sort_option = ['name', 'created_at', 'updated_at'];
@@ -36,7 +42,7 @@ class PostController extends ResponseApiController
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
         $language = $request->language;
-        $language = in_array($language, $languages) ? $language : '';
+        $language = in_array($language, $this->languages) ? $language : '';
         $query = Post::select('*');
 
         if ($status) {
@@ -46,9 +52,6 @@ class PostController extends ResponseApiController
             $query = $query->where('name', 'LIKE', '%' . $search . '%');
         }
         if ($language) {
-            $query = $query->whereHas('postDetail', function ($q) use ($language) {
-                $q->where('language', $language);
-            });
             $query = $query->with(['postDetail' => function ($q) use ($language) {
                 $q->where('language', $language);
             }]);
@@ -68,30 +71,14 @@ class PostController extends ResponseApiController
         return $this->handleSuccess($posts, 'Posts data');
     }
 
-    public function store(Request $request)
+    public function store(PostRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
             return $this->handleError('Unauthorized', 403);
         }
 
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
-            'type' => 'required',
-            'description' => 'required',
-            'post_metas.image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'category_id' => 'required|array',
-        ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
-
         $name = $request->name;
         $description = $request->description;
-        $languages = config('app.languages');
         $slug =  Str::slug($name);
         $user = Auth::id();
         $post = new Post;
@@ -106,7 +93,7 @@ class PostController extends ResponseApiController
         $post->type = $request->type;
         $post->description = $description;
         $post->save();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $post_detail = new PostDetail;
             $post_detail->name = translate($language, $name);
             $post_detail->slug = str_replace(' ', '-', $post_detail->name);
@@ -137,13 +124,13 @@ class PostController extends ResponseApiController
         }
         $post->Category()->sync($category_ids);
 
-
         return $this->handleSuccess($post, 'save success');
     }
+
     public function edit(Request $request, Post $post)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view this post', 403);
         }
 
         $language = $request->language;
@@ -165,30 +152,14 @@ class PostController extends ResponseApiController
         return $this->handleSuccess($post, 'success');
     }
 
-    public function update(Request $request, Post $post)
+    public function update(PostRequest $request, Post $post)
     {
         if (!$request->user()->hasPermission('update')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized edit this post', 403);
         }
-
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
-            'type' => 'required',
-            'description' => 'required',
-            'post_metas.image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'category_id' => 'required|array',
-        ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
 
         $name = $request->name;
         $description = $request->description;
-        $languages = config('app.languages');
         $slug =  Str::slug($name);
         $user = Auth::id();
         $category_ids = $request->category_id;
@@ -205,7 +176,7 @@ class PostController extends ResponseApiController
         $post->description = $description;
         $post->save();
         $post->postDetail()->delete();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $post_detail = new PostDetail;
             $post_detail->name = translate($language, $name);
             $post_detail->slug = str_replace(' ', '-', $post_detail->name);
@@ -215,17 +186,10 @@ class PostController extends ResponseApiController
             $post_detail->save();
         }
         if ($data_post_meta) {
-
             $post->postMeta()->where('meta_key', '!=', 'url_id')->delete();
             if (isset($data_post_meta['url_id'])) {
                 $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                $current_url_ids = explode('-', $current_url_ids[0]);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
+                deleteFile($current_url_ids[0]);
                 $post->postMeta()->delete();
                 CheckUsed($data_post_meta['url_id']);
                 $url_ids = implode('-', $data_post_meta['url_id']);
@@ -235,7 +199,6 @@ class PostController extends ResponseApiController
                 $post_meta->post_id = $post->id;
                 $post_meta->save();
             }
-
             foreach ($data_post_meta as $key => $value) {
                 if ($key != 'url_id') {
                     $post_meta = new PostMeta();
@@ -248,18 +211,14 @@ class PostController extends ResponseApiController
         }
         $post->Category()->sync($category_ids);
 
-
         return $this->handleSuccess($post, 'update success');
     }
-    public function restore(Request $request)
+
+    public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
             return $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-        ]);
 
         $ids = $request->input('ids');
 
@@ -274,16 +233,11 @@ class PostController extends ResponseApiController
         return $this->handleSuccess([], 'Post restored successfully!');
     }
 
-    public function destroy(Request $request)
+    public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
             return  $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-            'type' => 'required|in:delete,force_delete',
-        ]);
 
         $ids = $request->input('ids');
         $type = $request->input('type');
@@ -295,13 +249,7 @@ class PostController extends ResponseApiController
             $post->save();
             if ($type === 'force_delete') {
                 $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                $current_url_ids = explode('-', $current_url_ids[0]);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
+                deleteFile($current_url_ids[0]);
                 foreach ($ids as $id) {
                     $user_metas = UserMeta::where('meta_key', 'favorite_post')
                         ->where('meta_value', 'LIKE', "%$id%")
@@ -318,7 +266,6 @@ class PostController extends ResponseApiController
                 $post->delete();
             }
         }
-
         if ($type === 'force_delete') {
             return $this->handleSuccess([], 'Post force delete successfully!');
         } else {
@@ -332,9 +279,19 @@ class PostController extends ResponseApiController
         }
 
         $request->validate([
-            'name' => 'required|string|max: 255',
+            'name' => 'required|string|max:255',
             'description' => 'string',
+            'language' => 'required|string',
+        ], [
+            'name.required' => 'The name field is required.',
+            'description.required' => 'The description field is required.',
+            'name.string' => 'The name must be a string.',
+            'name.max' => 'The name must not exceed 255 characters.',
+            'description.string' => 'The description must be a string.',
+            'language.required' => 'The language field is required.',
+            'language.string' => 'The language must be a string.',
         ]);
+
 
         $language = $request->language;
         $name = $request->name;
@@ -351,6 +308,7 @@ class PostController extends ResponseApiController
         $post_detail->save();
         $post->status = 'pending';
         $post->save();
+
         return $this->handleSuccess($post_detail, 'Post detail updated successfully');
     }
 }

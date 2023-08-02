@@ -19,14 +19,17 @@ class Post extends Model
         'user_id',
         'slug',
     ];
+
     public function category()
     {
         return $this->belongsToMany(Category::class);
     }
+
     public function postMeta()
     {
         return $this->hasMany(PostMeta::class);
     }
+
     public function postDetail()
     {
         return $this->hasMany(PostDetail::class);

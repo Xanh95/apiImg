@@ -23,13 +23,19 @@ class Article extends Model
         'user_id',
         'slug',
     ];
+
     public function category()
     {
         return $this->belongsToMany(Category::class);
     }
+
     public function articleMeta()
     {
         return $this->hasMany(ArticleMeta::class);
+    }
+    public function reversionArticle()
+    {
+        return $this->hasMany(ReversionArticle::class);
     }
     public function articleDetail()
     {

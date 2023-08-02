@@ -21,12 +21,14 @@ class Toppage extends Model
         'status',
         'video',
     ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
     public function TopPageDetail()
     {
-        return $this->belongsTo(TopPageDetail::class);
+        return $this->hasOne(TopPageDetail::class);
     }
 }

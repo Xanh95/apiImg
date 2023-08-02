@@ -12,6 +12,7 @@ class PostMeta extends Model
         'meta_key',
         'meta_value',
     ];
+
     function post()
     {
         return $this->belongsTo(Post::class);

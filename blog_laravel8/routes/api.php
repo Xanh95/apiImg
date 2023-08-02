@@ -8,7 +8,7 @@ use App\Models\Post;
 use App\Models\Category;
 use App\Models\Article;
 use App\Models\ReversionArticle;
-
+use App\Models\Toppage;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,7 +22,7 @@ use App\Models\ReversionArticle;
 */
 
 
-
+// authencate
 Route::post('/register', [App\Http\Controllers\Api\AuthController::class, 'register']);
 Route::post('/login', [App\Http\Controllers\Api\AuthController::class, 'login']);
 
@@ -48,7 +48,7 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/user/favorite', [App\Http\Controllers\Api\UserController::class, 'addFavorite']);
     Route::get('/user/show/favorite', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
     // edit my account
-    Route::get('/edit/my_account', [App\Http\Controllers\Api\UserController::class, 'showFavorite'])->can('view', User::class);
+    Route::get('/edit/my_account', [App\Http\Controllers\Api\UserController::class, 'password_confirmation'])->can('view', User::class);
 
     // post
     Route::get('/post', [App\Http\Controllers\Api\PostController::class, 'index'])->can('view', Post::class);
@@ -92,9 +92,9 @@ Route::middleware('auth:api', 'verified')->group(function () {
     Route::post('/upload/video', [App\Http\Controllers\Api\UploadController::class, 'video']);
 
     // topage 
-    Route::post('create/toppage', [App\Http\Controllers\Api\ToppageController::class, 'store']);
-    Route::post('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'update']);
-    Route::get('edit/toppage', [App\Http\Controllers\Api\ToppageController::class, 'edit']);
+    Route::post('create/toppage', [App\Http\Controllers\Api\ToppageController::class, 'store'])->can('create', Toppage::class);
+    Route::post('edit/toppage/{user}', [App\Http\Controllers\Api\ToppageController::class, 'update'])->can('update', Toppage::class);
+    Route::get('edit/toppage/{user}', [App\Http\Controllers\Api\ToppageController::class, 'edit']);
     Route::post('change/toppage/status', [App\Http\Controllers\Api\ToppageController::class, 'changeStatus']);
     Route::post('update/toppage/detail', [App\Http\Controllers\Api\ToppageController::class, 'updateDetails']);
 

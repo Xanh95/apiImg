@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Models\ReversionArticle;
+use App\Models\Toppage;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 use Laravel\Passport\Passport;
 use App\Models\User;
 use App\Policies\UserPolicy;
@@ -12,7 +12,7 @@ use App\Policies\PostPolicy;
 use App\Policies\ArticlePolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\ReversionArticlePolicy;
-
+use App\Policies\TopPagePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -28,6 +28,7 @@ class AuthServiceProvider extends ServiceProvider
         Article::class => ArticlePolicy::class,
         Category::class => CategoryPolicy::class,
         ReversionArticle::class => ReversionArticlePolicy::class,
+        Toppage::class => TopPagePolicy::class,
     ];
 
     /**

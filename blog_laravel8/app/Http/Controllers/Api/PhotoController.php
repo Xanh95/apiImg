@@ -4,24 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\ApiImgrequest;
 use App\Models\Photo;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Api\ResponseApiController;
 use Illuminate\Support\Facades\File;
+use Illuminate\Http\Request;
 
 class PhotoController extends ResponseApiController
 {
 
     public function index()
     {
-        //
+
         $posts = Photo::all();
         return $this->handleSuccess($posts, 'get success');
     }
-    public function store(ApiImgrequest $request)
+    public function store(Request $request)
     {
-        //
 
         $dirUpload = 'public/upload/' . date('Y/m/d');
         $image = $request->image;
@@ -45,20 +44,20 @@ class PhotoController extends ResponseApiController
 
     public function show(Photo $photo)
     {
-        //
+
         return $this->handleSuccess($photo->url, 'success');
     }
 
     public function edit(Photo $photo)
     {
-        //
+
         return $this->handleSuccess($photo, 'success');
     }
 
 
-    public function update(ApiImgrequest $request, Photo $photo)
+    public function update(Request $request, Photo $photo)
     {
-        //
+
         $dirUpload = 'public/upload/' . date('Y/m/d');
         $title =  Str::random(10);
         $name = Str::slug($request->name);
@@ -89,18 +88,19 @@ class PhotoController extends ResponseApiController
 
             return $this->handleSuccess($photo, 'edit success');
         }
+
         return $this->handleError('edit fail', 404);
     }
 
 
     public function destroy(Photo $photo)
     {
-        //
 
         if (Storage::delete($photo->path . "/" . $photo->name)) {
             $photo->forceDelete();
             return $this->handleSuccess($photo, 'delete success');
         }
+
         return $this->handleError('delete fail', 404);
     }
 }

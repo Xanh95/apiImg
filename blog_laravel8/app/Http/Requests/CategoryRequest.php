@@ -26,10 +26,13 @@ class CategoryRequest extends FormRequest
         return [
             //
             'name' => 'required',
-            'slug' => 'required',
-            'status' => 'required',
+            'status' => 'required|string',
             'type' => 'required',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
+            'description' => 'required',
+            'url_id' => 'array',
+            'url_id.*' => 'numeric',
+            'post_ids' => 'array',
+            'post_ids.*' => 'numeric'
         ];
     }
     public function messages(): array
@@ -39,7 +42,10 @@ class CategoryRequest extends FormRequest
             'slug.required' => 'A slug is required',
             'status.required' => 'A status is required',
             'type.required' => 'A type is required',
-
+            'url_id.array' => 'A url_id must be in array format',
+            'post_ids.array' => 'A post_ids must be in array format',
+            'post_ids.*.numeric' => 'A post_ids must be in number format',
+            'url_id.*.numeric' => 'A post_ids must be in number format',
         ];
     }
 }

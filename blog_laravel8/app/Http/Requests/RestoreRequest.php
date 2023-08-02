@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class Apirequest extends FormRequest
+class RestoreRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,9 +25,13 @@ class Apirequest extends FormRequest
     {
         return [
             //
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
-            'name' => 'required|max:150'
+            'ids' => 'required',
+        ];
+    }
+    public function messages(): array
+    {
+        return [
+            'ids.required' => 'A ids is required',
         ];
     }
 }

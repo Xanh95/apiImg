@@ -16,6 +16,7 @@ class PostDetail extends Model
         'user_id',
         'slug',
     ];
+
     function post()
     {
         return $this->belongsTo(Post::class);

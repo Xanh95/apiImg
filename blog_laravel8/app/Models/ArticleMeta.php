@@ -12,6 +12,7 @@ class ArticleMeta extends Model
         'meta_key',
         'meta_value',
     ];
+
     function article()
     {
         return $this->belongsTo(Article::class);

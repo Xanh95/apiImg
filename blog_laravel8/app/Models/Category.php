@@ -20,10 +20,12 @@ class Category extends Model
         'link',
 
     ];
+
     public function posts(): BelongsToMany
     {
         return $this->belongsToMany(Post::class);
     }
+
     public function articles(): BelongsToMany
     {
         return $this->belongsToMany(Article::class);

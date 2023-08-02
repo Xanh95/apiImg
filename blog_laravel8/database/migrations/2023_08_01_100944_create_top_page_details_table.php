@@ -20,8 +20,8 @@ class CreateTopPageDetailsTable extends Migration
             $table->string('about');
             $table->text('summary');
             $table->string('language');
-            $table->unsignedBigInteger('top_page_id');
-            $table->foreign('top_page_id')->references('id')->on('toppages')->onDelete('cascade');
+            $table->unsignedBigInteger('toppage_id');
+            $table->foreign('toppage_id')->references('id')->on('toppages')->onDelete('cascade');
             $table->timestamps();
         });
     }

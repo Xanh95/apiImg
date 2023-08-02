@@ -26,6 +26,10 @@ class ReversionArticle extends Model
     {
         return $this->hasMany(ReversionArticleMeta::class);
     }
+    public function article()
+    {
+        return $this->belongsTo(Article::class);
+    }
     public function ReversionArticleDetail()
     {
         return $this->hasMany(ReversionArticleDetail::class);

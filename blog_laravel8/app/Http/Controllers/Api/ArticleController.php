@@ -2,23 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Article;
 use App\Models\ArticleDetail;
 use Illuminate\Http\Request;
 use App\Models\Upload;
 use Illuminate\Support\Str;
 use App\Models\ArticleMeta;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
-use App\Mail\ArticleStatus;
-
+use App\Http\Requests\ArticleRequest;
+use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\RestoreRequest;
 
 class ArticleController extends ResponseApiController
 {
     //
+    public $languages;
+
+    public function __construct()
+    {
+        $this->languages = config('app.languages');
+    }
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
@@ -27,7 +30,6 @@ class ArticleController extends ResponseApiController
 
         $status = $request->input('status');
         $layout_status = ['unpublished', 'published', 'draft', 'pending'];
-        $languages = config('app.languages');
         $sort = $request->input('sort');
         $sort_types = ['desc', 'asc'];
         $sort_option = ['title', 'created_at', 'updated_at'];
@@ -38,7 +40,7 @@ class ArticleController extends ResponseApiController
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
         $language = $request->language;
-        $language = in_array($language, $languages) ? $language : '';
+        $language = in_array($language, $this->languages) ? $language : '';
         $query = Article::select('*');
         if ($status) {
             $query = $query->where('status', $status);
@@ -47,9 +49,6 @@ class ArticleController extends ResponseApiController
             $query = $query->where('title', 'LIKE', '%' . $search . '%');
         }
         if ($language) {
-            $query = $query->whereHas('articleDetail', function ($q) use ($language) {
-                $q->where('language', $language);
-            });
             $query = $query->with(['articleDetail' => function ($q) use ($language) {
                 $q->where('language', $language);
             }]);
@@ -69,32 +68,14 @@ class ArticleController extends ResponseApiController
 
         return $this->handleSuccess($articles, 'article data');
     }
-    public function store(Request $request)
+    public function store(ArticleRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
             return $this->handleError('Unauthorized', 403);
         }
 
-        $request->validate([
-            'title' => 'required',
-            'type' => 'required',
-            'description' => 'required',
-            'content' => 'required',
-            'seo_title' => 'required',
-            'seo_description' => 'required',
-            'seo_content' => 'required',
-            'category_id' => 'required|array',
-        ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
-
         $title = $request->title;
         $description = $request->description;
-        $languages = config('app.languages');
         $slug =  Str::slug($title);
         $user = Auth::id();
         $article = new Article;
@@ -121,7 +102,7 @@ class ArticleController extends ResponseApiController
             CheckUsed($url_ids);
         }
         $article->save();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $article_detail = new ArticleDetail();
             $article_detail->title = translate($language, $title);
             $article_detail->slug = str_replace(' ', '-', $article_detail->title);
@@ -145,7 +126,6 @@ class ArticleController extends ResponseApiController
             }
         }
         $article->Category()->sync($category_ids);
-
 
         return $this->handleSuccess($article, 'save success');
     }
@@ -174,7 +154,7 @@ class ArticleController extends ResponseApiController
         return $this->handleSuccess($article, 'success');
     }
 
-    public function update(Request $request, Article $article)
+    public function update(ArticleRequest $request, Article $article)
     {
         if (!$request->user()->hasPermission('update')) {
             return $this->handleError('Unauthorized', 403);
@@ -183,25 +163,9 @@ class ArticleController extends ResponseApiController
             return $this->handleError('Unauthorized', 403);
         }
 
-        $request->validate([
-            'title' => 'required',
-            'type' => 'required',
-            'description' => 'required',
-            'content' => 'required',
-            'seo_title' => 'required',
-            'seo_description' => 'required',
-            'seo_content' => 'required',
-            'category_id' => 'required|array',
-        ], [
-            'title.required' => 'A title is required',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
-
         $title = $request->title;
         $description = $request->description;
         $content = $request->content;
-        $languages = config('app.languages');
         $slug =  Str::slug($title);
         $user = Auth::id();
         $category_ids = $request->category_id;
@@ -223,24 +187,16 @@ class ArticleController extends ResponseApiController
         $article->content = $content;
         $article->status = 'pending';
         if ($request->has('url_id')) {
-            if ($current_url) {
-                $current_url_ids = explode('-', $current_url);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
-            }
+            deleteFile($current_url);
             $article->thumbnail = implode('-', $url_ids);
             CheckUsed($url_ids);
         }
         $article->save();
         $article->articleDetail()->delete();
-        foreach ($languages as $language) {
+        foreach ($this->languages as $language) {
             $article_detail = new ArticleDetail;
             $article_detail->title = translate($language, $title);
-            $article_detail->slug = str_replace(' ', '-', $article_detail->title);
+            $article_detail->slug = str_replace(' ', '-', $title);
             $article_detail->description = translate($language, $description);
             $article_detail->content = translate($language, $content);
             $article_detail->seo_content = translate($language, $seo_content);
@@ -261,18 +217,13 @@ class ArticleController extends ResponseApiController
         }
         $article->Category()->sync($category_ids);
 
-
-        return $this->handleSuccess($article, 'update success');
+        return $this->handleSuccess($article, 'update article success');
     }
-    public function restore(Request $request)
+    public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized restore article', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-        ]);
 
         $ids = $request->input('ids');
 
@@ -286,16 +237,11 @@ class ArticleController extends ResponseApiController
 
         return $this->handleSuccess([], 'Article restored successfully!');
     }
-    public function destroy(Request $request)
+    public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized delete articles', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-            'type' => 'required|in:delete,force_delete',
-        ]);
 
         $ids = $request->input('ids');
         $type = $request->input('type');
@@ -305,39 +251,39 @@ class ArticleController extends ResponseApiController
         foreach ($articles as $article) {
             $article->status = 'unpublished';
             $article->save();
+            $reversion_articles = $article->ReversionArticle()->get();
+            foreach ($reversion_articles as $reversion) {
+                deleteFile($reversion->new_thumbnail);
+            }
             if ($type === 'force_delete') {
-                $current_url = $article->thumbnail;
-                if ($current_url) {
-                    $current_url_ids = explode('-', $current_url);
-                    foreach ($current_url_ids as $current_url_id) {
-                        $image = Upload::find($current_url_id);
-                        $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                        Storage::delete($path);
-                        $image->delete();
-                    }
-                }
-
+                deleteFile($article->thumbnail);
                 $article->forceDelete();
             } else {
                 $article->delete();
             }
         }
-
         if ($type === 'force_delete') {
             return $this->handleSuccess([], 'article force delete successfully!');
         } else {
             return $this->handleSuccess([], 'article delete successfully!');
         }
     }
+
     public function updateDetails(Request $request, Article $article)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized edit this language of article', 403);
         }
 
         $request->validate([
             'title' => 'required|string|max: 255',
-            'description' => 'string',
+            'description' => 'required|string',
+            'content' => 'required|string',
+            'language' => 'required'
+        ], [
+            'title.required' => 'A title is required',
+            'title.string' => 'The title must be in string format',
+            'title.max' => 'A title with a maximum of 255 characters'
         ]);
 
         $language = $request->language;
@@ -346,7 +292,7 @@ class ArticleController extends ResponseApiController
         $content = $request->content;
         $slug =  Str::slug($title);
 
-        if (!($language && in_array($language, config('app.languages')))) {
+        if (!($language && in_array($language, $this->languages))) {
             return $this->handleError('Not Found Language', 404);
         }
         $article_detail = $article->articleDetail()->where('language', $language)->first();
@@ -357,6 +303,7 @@ class ArticleController extends ResponseApiController
         $article_detail->save();
         $article->status = 'pending';
         $article->save();
+
         return $this->handleSuccess($article_detail, 'article detail updated successfully');
     }
 }

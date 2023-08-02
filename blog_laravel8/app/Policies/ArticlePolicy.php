@@ -34,7 +34,6 @@ class ArticlePolicy
         return $user->hasPermission('view');
     }
 
-
     public function update(User $user, Article $article)
     {
         return $user->hasPermission('update') || $article->user_id == $user->id;

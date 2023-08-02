@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Upload;
 use Illuminate\Support\Facades\Auth;
@@ -24,8 +23,6 @@ class UploadController extends ResponseApiController
         $object = $request->object;
         $dirUpload = "public/upload/$object/" . date('Y/m/d');
         $type = $request->type;
-
-
         $option_sizes = [
             '100x2000',
             '200x2000',
@@ -41,12 +38,10 @@ class UploadController extends ResponseApiController
             $title = Str::random(10);
             $size = '300x2000';
             $minDistance = PHP_INT_MAX;
-
             list($current_width, $current_height) = getimagesize($image);
             foreach ($option_sizes as $option_size) {
                 [$width, $height] = explode('x', $option_size);
                 $distance = sqrt(pow($current_width - $width, 2) + pow($current_height - $height, 2));
-
                 if ($distance < $minDistance) {
                     $minDistance = $distance;
                     $size = $option_size;
@@ -64,7 +59,6 @@ class UploadController extends ResponseApiController
             }
             list($crop_width, $crop_height) = explode('x', $size);
             Image::make($image)->resize($crop_width, $crop_height)->save(storage_path('app/' . $dirUpload . '/' . $imageName));
-
             $imageUrl = asset(Storage::url($dirUpload . '/' . $imageName));
             $upload->url = $imageUrl;
             $upload->user_id = Auth::id();
@@ -73,7 +67,6 @@ class UploadController extends ResponseApiController
             $upload->save();
             $data[] = $upload;
         }
-
 
         return $this->handleSuccess($data, "upload image $object");
     }

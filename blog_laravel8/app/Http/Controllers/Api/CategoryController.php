@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Api\ResponseApiController;
+use App\Http\Requests\CategoryRequest;
+use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\RestoreRequest;
 use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
-use Intervention\Image\Facades\Image;
 
-use function PHPUnit\Framework\isEmpty;
 
 class CategoryController extends ResponseApiController
 {
@@ -36,9 +35,7 @@ class CategoryController extends ResponseApiController
         $search = $request->input('query');
         $limit = request()->input('limit') ?? config('app.paginate');
 
-
         $query = Category::select('*');
-
         if ($status) {
             $query = $query->where('status', $status);
         }
@@ -56,28 +53,14 @@ class CategoryController extends ResponseApiController
             }
         }
 
-        return $this->handleSuccess($categories, 'Categories data');
+        return $this->handleSuccess($categories, 'get success Categories data');
     }
 
-    public function store(Request $request)
+    public function store(CategoryRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
             return $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
-            'type' => 'required',
-            'description' => 'required',
-
-        ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
-            'description.required' => 'A status is required',
-            'type.required' => 'A type is required',
-        ]);
 
         $url_ids = $request->url_id;
         $user = Auth::id();
@@ -100,11 +83,13 @@ class CategoryController extends ResponseApiController
 
         return $this->handleSuccess($category, 'save success');
     }
+
     public function edit(Category $category, Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
             return $this->handleError('Unauthorized', 403);
         }
+
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
         if ($category->url) {
             $category->image = explode('-', Upload::find($category->url)->urls);
@@ -113,25 +98,11 @@ class CategoryController extends ResponseApiController
         return $this->handleSuccess($category, 'success');
     }
 
-    public function update(Request $request, Category $category)
+    public function update(CategoryRequest $request, Category $category)
     {
         if (!$request->user()->hasPermission('update')) {
             return $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'name' => 'required',
-            'status' => 'required|string',
-            'type' => 'required',
-            'description' => 'required',
-        ], [
-            'name.required' => 'A name is required',
-            'status.required' => 'A status is required',
-            'status.string' => 'A status is string',
-            'description.string' => 'A status is string',
-            'type.required' => 'A type is required',
-        ]);
-
 
         $user = Auth::id();
         $name = $request->name;
@@ -155,15 +126,7 @@ class CategoryController extends ResponseApiController
             $category->posts()->sync($post_ids);
         }
         if ($request->has('url_id')) {
-            if ($current_url) {
-                $current_url_ids = explode('-', $current_url);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
-            }
+            deleteFile($current_url);
             CheckUsed($url_ids);
             $category->url = implode('-', $url_ids);
         }
@@ -172,15 +135,11 @@ class CategoryController extends ResponseApiController
         return $this->handleSuccess($category, 'update success');
     }
 
-    public function restore(Request $request)
+    public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
             return $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-        ]);
 
         $ids = $request->category('ids');
         $ids = is_array($ids) ? $ids : [$ids];
@@ -195,16 +154,11 @@ class CategoryController extends ResponseApiController
         return $this->handleSuccess([], 'Category restored successfully!');
     }
 
-    public function destroy(Request $request)
+    public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
             return $this->handleError('Unauthorized', 403);
         }
-
-        $request->validate([
-            'ids' => 'required',
-            'type' => 'required|in:delete,force_delete',
-        ]);
 
         $ids = $request->input('ids');
         $type = $request->input('type');
@@ -215,13 +169,7 @@ class CategoryController extends ResponseApiController
             $category->status = 'inactive';
             $category->save();
             if ($type === 'force_delete') {
-                $current_url_ids = explode('-', $category->url);
-                foreach ($current_url_ids as $current_url_id) {
-                    $image = Upload::find($current_url_id);
-                    $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                    Storage::delete($path);
-                    $image->delete();
-                }
+                deleteFile($category->url);
                 $category->forceDelete();
             } else {
                 $category->delete();

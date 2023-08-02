@@ -32,7 +32,6 @@ class CategoryPolicy
         return $user->hasPermission('view');
     }
 
-
     public function update(User $user)
     {
         return $user->hasPermission('update');
