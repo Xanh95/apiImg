@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class UploadController extends ResponseApiController
 {
-    //
+
     public function store(Request $request)
     {
         $request->validate([

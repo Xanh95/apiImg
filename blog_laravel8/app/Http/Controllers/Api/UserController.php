@@ -25,14 +25,13 @@ class UserController extends ResponseApiController
     public function userInfo(Request $request)
     {
         $user = $request->user('api');
-        $url_id = explode('-', $user->avatar);
+        $url_id = $user->avatar;
 
         if ($url_id) {
-            foreach ($url_id as $id) {
-                $avatar[] = Upload::find($id)->url;
-            }
+            $avatar = Upload::find($url_id)->url;
             $user->avatar = $avatar;
         }
+        $user->role = $user->roles()->pluck('name');
 
         return $this->handleSuccess($user, 'get success user info');
     }
@@ -47,12 +46,15 @@ class UserController extends ResponseApiController
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8',
             'name' => 'required|max:150',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
+            'url_id' =>  'array',
         ]);
 
         $user = new User;
         $role = $request->role ?? 2;
         $url_id = $request->url_id;
+        $name = $request->name;
+        $email = $request->email;
+        $password = $request->password;
 
         if (!$request->user()->hasRole('admin')) {
             if ($role == 1) {
@@ -60,15 +62,18 @@ class UserController extends ResponseApiController
             }
         }
         if ($url_id) {
-            $user->avatar = implode('-', $url_id);
+            $user->avatar = $url_id;
+            CheckUsed([$url_id]); // kiểm tra ảnh sử dụng và xóa những ảnh không dùng đi
         }
-        $user->email = $request->email;
-        $user->password = $request->password;
+        $user->name = $name;
+        $user->email = $email;
+        $user->password = $password;
         $user->password = Hash::make($request->password);
         $user->email_verified_at = Carbon::now();
         $user->status = 'active';
         $user->save();
         $user->roles()->sync($role);
+        $user->avatar = Upload::find($user->avatar)->first()->url;
 
         return $this->handleSuccess($user, 'create success user');
     }
@@ -108,11 +113,7 @@ class UserController extends ResponseApiController
         $users = $users->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($users as $user) {
             if ($user->avatar) {
-                $url_id = explode('-', $user->avatar);
-                foreach ($url_id as $id) {
-                    $avatar[] = Upload::find($id)->url;
-                }
-                $user->avatar = $avatar;
+                $user->avatar = Upload::find($user->avatar)->url;
             }
         }
 
@@ -130,6 +131,7 @@ class UserController extends ResponseApiController
         if ($url_id) {
             $user->avatar = Upload::find($url_id)->url;
         }
+        $user->role = $user->roles()->pluck('name');
         $data = $user;
 
         return $this->handleSuccess($data, 'get data success');
@@ -148,27 +150,24 @@ class UserController extends ResponseApiController
             'role' => 'required',
         ]);
 
-        $role = $request->role;
+        $roles = $request->role;
         $url_id = $request->url_id;
         $password = $request->password;
         $name = $request->name;
         $email = $request->email;
+        $roles = is_array($roles) ? $roles : [$roles];
 
-        if (!$request->user()->hasRole('admin')) {
+        foreach ($roles as $role) {
             if ($role == 1) {
-                $this->handleError('Unauthorized choose role', 403);
+                if (!$request->user()->hasRole('admin')) {
+                    return  $this->handleError('Unauthorized choose role', 403);
+                }
             }
         }
         if ($url_id) {
-            $current_url_ids = explode('-', $user->avatar);
-            foreach ($current_url_ids as $current_url_id) {
-                $image = Upload::find($current_url_id);
-                $path = str_replace(url('/') . '/storage', 'public', $image->url);
-                Storage::delete($path);
-                $image->delete();
-            }
-            $user->avatar = implode('-', $url_id);
-            CheckUsed($url_id);
+            deleteFile($user->avatar); // xóa ảnh avatar cũ đi
+            $user->avatar = $url_id;
+            CheckUsed([$url_id]); // check những ảnh tạo ra dùng ảnh nào còn lại ko dùng xóa đi
         }
         if ($password) {
             $user->password = Hash::make($password);
@@ -182,6 +181,10 @@ class UserController extends ResponseApiController
         $user->name = $name;
         $user->save();
         $user->roles()->sync($role);
+        if ($user->avatar) {
+            $user->avatar = Upload::find($user->avatar)->first()->url;
+        }
+        $user->role = $user->roles()->pluck('name');
 
         return $this->handleSuccess($user, "update $user->name success");
     }
@@ -201,16 +204,16 @@ class UserController extends ResponseApiController
             $user->status = 'inactive';
             $user->save();
             if ($type === 'force_delete') {
-                deleteFile($user->avatar);
+                deleteFile($user->avatar); // xóa avatar cũ đi
                 $user->forceDelete();
             } else {
                 $user->delete();
             }
         }
         if ($type === 'force_delete') {
-            return $this->handleSuccess([], 'Post force delete successfully!');
+            return $this->handleSuccess([], 'User force delete successfully!');
         } else {
-            return $this->handleSuccess([], 'Post delete successfully!');
+            return $this->handleSuccess([], 'User delete successfully!');
         }
     }
 
@@ -241,7 +244,8 @@ class UserController extends ResponseApiController
 
         $request->validate([
             'favorite' => 'required|array',
-            'type' => 'required'
+            'favorite.*' => 'numeric',
+            'type' => 'required|in:add,sub'
         ]);
 
         $favorites = $request->favorite;
@@ -279,18 +283,22 @@ class UserController extends ResponseApiController
         if (!$request->user()->hasPermission('view')) {
             return $this->handleError('Unauthorized view show favorite', 403);
         }
-        $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
-        $post_id = explode('-', $user_meta->meta_value);
-        $data = Post::find($post_id);
 
-        return $this->handleSuccess($data, 'get favorite success');
+        if ($request->user()->userMeta()->where('meta_key', 'favorite_post')->exists()) {
+            $user_meta = $request->user()->userMeta()->where('meta_key', 'favorite_post')->first();
+            $post_id = explode('-', $user_meta->meta_value);
+            $data = Post::find($post_id);
+
+            return $this->handleSuccess($data, 'get favorite success');
+        }
+        return $this->handleError('do not have favorite', 404);
     }
 
     public function editMyPassWord(Request $request)
     {
         $request->validate([
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password' => 'required',
+            'password' => 'required|min:8|confirmed',
         ]);
 
         $user = User::find(Auth::id());
@@ -304,7 +312,7 @@ class UserController extends ResponseApiController
         $user->password = Hash::make($password);
         $user->save();
 
-        return $this->handleSuccess([], 'change password success');
+        return $this->handleSuccess([], 'changed password success');
     }
 
     public function approve(Request $request, Article $article)
@@ -314,7 +322,7 @@ class UserController extends ResponseApiController
         }
 
         $request->validate([
-            'status' => 'required|string|in:published,reject',
+            'status' => 'required|in:published,reject',
             'reason' => 'string',
         ]);
 
@@ -434,6 +442,6 @@ class UserController extends ResponseApiController
             $reversion->save();
         }
 
-        return $this->handleSuccess($reversion, 'reversion status updated successfully');
+        return $this->handleSuccess($article, 'reversion status updated successfully');
     }
 }

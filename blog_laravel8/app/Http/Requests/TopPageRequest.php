@@ -22,7 +22,7 @@ class TopPageRequest extends FormRequest
             'facebook' => 'url|starts_with:https://www.facebook.com/',
             'instagram' => 'url|starts_with:https://www.instagram.com/',
             'website' => 'url',
-            'status' => 'in:published,unpublished'
+            'status' => 'required|in:published,unpublished'
         ];
     }
     public function messages()

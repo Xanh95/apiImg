@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ReversionArticleRequest extends FormRequest
+class ArticleDetailRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,20 +24,15 @@ class ReversionArticleRequest extends FormRequest
     public function rules()
     {
         return [
-            'title' => 'required',
-            'description' => 'required',
-            'content' => 'required',
+            'title' => 'required|string|max: 255',
+            'description' => 'required|string',
+            'content' => 'required|string',
+            'language' => 'required',
             'seo_content' => 'required',
             'seo_description' => 'required',
             'seo_title' => 'required',
-            'type' => 'required',
-            'category_ids' => 'required|array',
-            'category_ids.*' => 'numeric',
-            'url_id' => 'array',
-            'url_id.*' => 'numeric',
         ];
     }
-
     public function messages()
     {
         return [
@@ -47,12 +42,8 @@ class ReversionArticleRequest extends FormRequest
             'seo_content.required' => 'The SEO content field is required.',
             'seo_description.required' => 'The SEO description field is required.',
             'seo_title.required' => 'The SEO title field is required.',
-            'type.required' => 'The type field is required.',
-            'category_ids.required' => 'The category_ids field is required.',
-            'category_ids.array' => 'The category_ids must be an array.',
-            'category_ids.*.numeric' => 'The values in the category_ids array must be integers.',
-            'url_id.array' => 'The url_id must be an array.',
-            'url_id.*.numeric' => 'The values in the url_id array must be integers.',
+            'language.required' => 'A language is required.',
+
         ];
     }
 }

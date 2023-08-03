@@ -9,7 +9,6 @@ use App\Http\Requests\CategoryRequest;
 use App\Http\Requests\DeleteRequest;
 use App\Http\Requests\RestoreRequest;
 use App\Models\Upload;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,7 +19,7 @@ class CategoryController extends ResponseApiController
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view categories', 403);
         }
 
         $status = $request->input('status');
@@ -59,10 +58,10 @@ class CategoryController extends ResponseApiController
     public function store(CategoryRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized create category', 403);
         }
 
-        $url_ids = $request->url_id;
+        $url_ids = $request->url_ids;
         $user = Auth::id();
         $slug =  Str::slug($request->name);
         $category = new Category;
@@ -74,12 +73,22 @@ class CategoryController extends ResponseApiController
         $category->status = $request->status;
         $category->type = $request->type;
         $category->description = $request->description;
-        $category->url = implode('-', $url_ids);
-        CheckUsed($url_ids);
+        if ($url_ids) {
+            $category->url = implode('-', $url_ids);
+            CheckUsed($url_ids); // kiểm tra những ảnh mà người dùng đó tạo ra đã sử dụng không thì xóa đi
+        }
         $category->save();
         if ($post_ids) {
             $category->posts()->sync($post_ids);
         }
+        if ($category->url) {
+            $url_ids = explode('-', $category->url);
+            foreach ($url_ids as $url_id) {
+                $image[] = Upload::find($url_id)->url;
+            }
+            $category->image = $image;
+        }
+
 
         return $this->handleSuccess($category, 'save success');
     }
@@ -87,12 +96,16 @@ class CategoryController extends ResponseApiController
     public function edit(Category $category, Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view this category', 403);
         }
 
         $category->posts = $category->posts()->where('status', 'active')->pluck('name');
         if ($category->url) {
-            $category->image = explode('-', Upload::find($category->url)->urls);
+            $url_ids = explode('-', $category->url);
+            foreach ($url_ids as $url_id) {
+                $image[] = Upload::find($url_id)->url;
+            }
+            $category->image = $image;
         }
 
         return $this->handleSuccess($category, 'success');
@@ -101,7 +114,7 @@ class CategoryController extends ResponseApiController
     public function update(CategoryRequest $request, Category $category)
     {
         if (!$request->user()->hasPermission('update')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized update category', 403);
         }
 
         $user = Auth::id();
@@ -126,8 +139,8 @@ class CategoryController extends ResponseApiController
             $category->posts()->sync($post_ids);
         }
         if ($request->has('url_id')) {
-            deleteFile($current_url);
-            CheckUsed($url_ids);
+            deleteFile($current_url); // xóa những file ảnh cũ đi
+            CheckUsed($url_ids); // kiểm tra những ảnh mà người dùng đó tạo ra đã sử dụng không thì xóa đi
             $category->url = implode('-', $url_ids);
         }
         $category->save();
@@ -138,10 +151,10 @@ class CategoryController extends ResponseApiController
     public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized restore category', 403);
         }
 
-        $ids = $request->category('ids');
+        $ids = $request->input('ids');
         $ids = is_array($ids) ? $ids : [$ids];
         Category::onlyTrashed()->whereIn('id', $ids)->restore();
 
@@ -157,7 +170,7 @@ class CategoryController extends ResponseApiController
     public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized delete categories', 403);
         }
 
         $ids = $request->input('ids');
@@ -169,7 +182,7 @@ class CategoryController extends ResponseApiController
             $category->status = 'inactive';
             $category->save();
             if ($type === 'force_delete') {
-                deleteFile($category->url);
+                deleteFile($category->url); // xóa những file ảnh cũ đi
                 $category->forceDelete();
             } else {
                 $category->delete();

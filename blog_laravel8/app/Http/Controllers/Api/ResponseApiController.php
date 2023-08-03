@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class ResponseApiController extends Controller
 {
-    //
+
     public function handleSuccess($data, $message): JsonResponse
     {
         $response = [

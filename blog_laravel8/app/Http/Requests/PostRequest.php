@@ -30,10 +30,10 @@ class PostRequest extends FormRequest
             'type' => 'required',
             'description' => 'required',
             'post_metas.image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
-            'category_id' => 'required|array',
-            'category_id.*' => 'numeric',
-            'url_id' => 'array',
-            'url_id.*' => 'numeric',
+            'category_ids' => 'required|array',
+            'category_ids.*' => 'numeric',
+            'url_ids' => 'array',
+            'url_ids.*' => 'numeric',
         ];
     }
 

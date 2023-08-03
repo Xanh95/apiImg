@@ -42,7 +42,7 @@ class UserPolicy
         return $user->hasPermission('delete');
     }
 
-    public function approve(User $user, Article $article)
+    public function approve()
     {
     }
 }

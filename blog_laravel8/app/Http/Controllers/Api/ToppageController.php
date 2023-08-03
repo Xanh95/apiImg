@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\TopPageRequest;
+use App\Http\Requests\TopPageStatusRequest;
 use App\Models\Toppage;
 use Illuminate\Http\Request;
 use App\Models\Upload;
@@ -50,7 +51,7 @@ class ToppageController extends ResponseApiController
         if ($video || $cover_photo || $avatar) {
             $ids = [$video, $cover_photo, $avatar];
             $ids = array_filter($ids);
-            CheckUsed($ids);
+            CheckUsed($ids); // kiểm tra những ảnh,video tạo ra đã dùng và xóa những ảnh hoặc video không dùng đi
         }
         $top_page->avatar = $avatar;
         $top_page->website = $website;
@@ -64,7 +65,7 @@ class ToppageController extends ResponseApiController
             $top_page_detail->area = translate($language, $area);
             $top_page_detail->about = translate($language, $about);
             $top_page_detail->summary = translate($language, $summary);
-            $top_page_detail->top_page_id = $top_page->id;
+            $top_page_detail->toppage_id = $top_page->id;
             $top_page_detail->language = $language;
             $top_page_detail->save();
         }
@@ -101,7 +102,7 @@ class ToppageController extends ResponseApiController
         if ($video || $cover_photo || $avatar) {
             $ids = [$video, $cover_photo, $avatar];
             $ids = array_filter($ids);
-            CheckUsed($ids);
+            CheckUsed($ids); // kiểm tra những ảnh,video tạo ra đã dùng và xóa những ảnh hoặc video không dùng đi
             if ($video) {
                 $top_page->video = $video;
                 $old_video = Upload::find($current_video);
@@ -136,7 +137,7 @@ class ToppageController extends ResponseApiController
             $top_page_detail->area = translate($language, $area);
             $top_page_detail->about = translate($language, $about);
             $top_page_detail->summary = translate($language, $summary);
-            $top_page_detail->top_page_id = $top_page->id;
+            $top_page_detail->toppage_id = $top_page->id;
             $top_page_detail->language = $language;
             $top_page_detail->save();
         }
@@ -150,14 +151,14 @@ class ToppageController extends ResponseApiController
         $top_page = $user->topPage()->first();
 
         if ($top_page) {
-            if ($top_page->url_avatar) {
-                $top_page->url_avatar = Upload::find($top_page->avatar)->url;
+            if ($top_page->avatar) {
+                $top_page->avatar = Upload::find($top_page->avatar)->url;
             }
-            if ($top_page->url_cover_photo) {
-                $top_page->url_cover_photo = Upload::find($top_page->cover_photo)->url;
+            if ($top_page->cover_photo) {
+                $top_page->cover_photo = Upload::find($top_page->cover_photo)->url;
             }
-            if ($top_page->url_video) {
-                $top_page->url_video = Upload::find($top_page->video)->url;
+            if ($top_page->video) {
+                $top_page->video = Upload::find($top_page->video)->url;
             }
             if ($language) {
                 $top_page->top_page_detail = $top_page->topPageDetail()->where('language', $language)->get();
@@ -168,14 +169,8 @@ class ToppageController extends ResponseApiController
         return $this->handleError('do not have top page', 404);
     }
 
-    public function changeStatus(Request $request)
+    public function changeStatus(TopPageStatusRequest $request)
     {
-        $request->validate([
-            'status' => 'in:published,unpublished',
-        ], [
-            'status.in' => 'It should be either "published" or "unpublished"',
-        ]);
-
         $user = $request->user();
         $top_page = $user->topPage()->first();
         $status = $request->status;

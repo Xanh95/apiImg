@@ -16,20 +16,6 @@ use Illuminate\Support\Facades\Mail;
 class VerifyEmailController extends ResponseApiController
 {
 
-    public function __invoke(Request $request)
-    {
-        $user = User::find($request->route('id'));
-
-        if ($user->hasVerifiedEmail()) {
-            return $this->handleSuccess([], 'already-success');
-        }
-
-        if ($user->markEmailAsVerified()) {
-            event(new Verified($user));
-        }
-
-        return $this->handleSuccess([], 'verify-success');
-    }
     public function verifyPin(Request $request)
     {
         $request->validate([
@@ -46,6 +32,9 @@ class VerifyEmailController extends ResponseApiController
             $user->pin = '';
             $user->save();
             return $this->handleError("Authentication Timeout", 410);
+        }
+        if ($user->hasVerifiedEmail()) {
+            return $this->handleSuccess([], 'already-success');
         }
         if ($pin == $userPin) {
             $user->pin = '';
@@ -66,6 +55,9 @@ class VerifyEmailController extends ResponseApiController
         $twentyFourHoursAgo = Carbon::now()->subHours(24);
         if (!($updatedAt->lt($twentyFourHoursAgo))) {
             return $this->handleError("PIN is still valid", 200);
+        }
+        if ($user->hasVerifiedEmail()) {
+            return $this->handleSuccess([], 'already-success');
         }
         $user->pin = $pin;
         $user->save();

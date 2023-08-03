@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\PostDetailRequest;
 use App\Http\Requests\PostRequest;
 use App\Http\Requests\RestoreRequest;
 use App\Models\Post;
@@ -74,7 +75,7 @@ class PostController extends ResponseApiController
     public function store(PostRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized create post ', 403);
         }
 
         $name = $request->name;
@@ -82,9 +83,9 @@ class PostController extends ResponseApiController
         $slug =  Str::slug($name);
         $user = Auth::id();
         $post = new Post;
-        $category_ids = $request->category_id;
+        $category_ids = $request->category_ids;
         $data_post_meta = $request->post_metas;
-        $data_post_meta['url_id'] = $request->url_id;
+        $data_post_meta['url_id'] = $request->url_ids;
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -107,7 +108,7 @@ class PostController extends ResponseApiController
                 $post_meta = new PostMeta();
                 $post_meta->meta_key = 'url_id';
                 $post_meta->meta_value = implode('-', $data_post_meta['url_id']);
-                CheckUsed($data_post_meta['url_id']);
+                CheckUsed($data_post_meta['url_id']); // kiểm tra những id ảnh đã dùng xóa những ảnh không dùng
                 $post_meta->post_id = $post->id;
                 $post_meta->save();
             }
@@ -123,6 +124,14 @@ class PostController extends ResponseApiController
             }
         }
         $post->Category()->sync($category_ids);
+        $url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
+        if (!$url_ids->isEmpty()) {
+            $url_ids = explode('-', $url_ids[0]);
+            foreach ($url_ids as $url_id) {
+                $image[] = Upload::find($url_id)->url;
+            }
+            $post->image = $image;
+        }
 
         return $this->handleSuccess($post, 'save success');
     }
@@ -162,9 +171,9 @@ class PostController extends ResponseApiController
         $description = $request->description;
         $slug =  Str::slug($name);
         $user = Auth::id();
-        $category_ids = $request->category_id;
+        $category_ids = $request->category_ids;
         $data_post_meta = $request->post_metas;
-        $data_post_meta['url_id'] = $request->url_id;
+        $data_post_meta['url_id'] = $request->url_ids;
 
         $post->user_id = $user;
         $post->slug = $slug;
@@ -189,9 +198,9 @@ class PostController extends ResponseApiController
             $post->postMeta()->where('meta_key', '!=', 'url_id')->delete();
             if (isset($data_post_meta['url_id'])) {
                 $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                deleteFile($current_url_ids[0]);
+                deleteFile($current_url_ids[0]); // xóa những ảnh cũ đi
                 $post->postMeta()->delete();
-                CheckUsed($data_post_meta['url_id']);
+                CheckUsed($data_post_meta['url_id']); // kiểm tra những id ảnh đã dùng xóa những ảnh không dùng
                 $url_ids = implode('-', $data_post_meta['url_id']);
                 $post_meta = new PostMeta();
                 $post_meta->meta_key = 'url_id';
@@ -217,7 +226,7 @@ class PostController extends ResponseApiController
     public function restore(RestoreRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized restore posts', 403);
         }
 
         $ids = $request->input('ids');
@@ -236,7 +245,7 @@ class PostController extends ResponseApiController
     public function destroy(DeleteRequest $request)
     {
         if (!$request->user()->hasPermission('delete')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized delete posts', 403);
         }
 
         $ids = $request->input('ids');
@@ -249,7 +258,7 @@ class PostController extends ResponseApiController
             $post->save();
             if ($type === 'force_delete') {
                 $current_url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
-                deleteFile($current_url_ids[0]);
+                deleteFile($current_url_ids[0]); // xóa những ảnh của post đi
                 foreach ($ids as $id) {
                     $user_metas = UserMeta::where('meta_key', 'favorite_post')
                         ->where('meta_value', 'LIKE', "%$id%")
@@ -272,26 +281,11 @@ class PostController extends ResponseApiController
             return $this->handleSuccess([], 'Post delete successfully!');
         }
     }
-    public function updateDetails(Request $request, Post $post)
+    public function updateDetails(PostDetailRequest $request, Post $post)
     {
         if (!$request->user()->hasPermission('update')) {
-            return  $this->handleError('Unauthorized', 403);
+            return  $this->handleError('Unauthorized update language this post', 403);
         }
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'string',
-            'language' => 'required|string',
-        ], [
-            'name.required' => 'The name field is required.',
-            'description.required' => 'The description field is required.',
-            'name.string' => 'The name must be a string.',
-            'name.max' => 'The name must not exceed 255 characters.',
-            'description.string' => 'The description must be a string.',
-            'language.required' => 'The language field is required.',
-            'language.string' => 'The language must be a string.',
-        ]);
-
 
         $language = $request->language;
         $name = $request->name;

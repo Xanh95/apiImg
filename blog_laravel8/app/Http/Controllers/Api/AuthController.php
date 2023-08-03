@@ -20,7 +20,6 @@ class AuthController extends ResponseApiController
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8|confirmed',
             'name' => 'required|max:150',
-            'image' =>  'image|mimes:png,jpg,jpeg,svg|max:10240',
         ], [
             'email.required' => 'A email is required',
             'email.email' => 'The email must be in email format',
@@ -30,18 +29,13 @@ class AuthController extends ResponseApiController
             'password.confirmed' => 'The password and password confirmation are not correct',
             'name.required' => 'A name is required',
             'name.max' => 'A name with a maximum of 150 characters',
-            'image.image' => 'A image is not a image',
-            'image.mimes' => 'A format of image not in png,jpg,jpeg,svg',
-            'image.max' => 'Maximum file size to upload is 10MB'
         ]);
 
         $user = new User;
         $url_id = $request->url_id;
         $pin = random_int(100000, 999999);
 
-        if ($url_id) {
-            $user->avatar = implode('-', $url_id);
-        }
+
         $user->email = $request->email;
         $user->name = $request->name;
         $user->password = Hash::make($request->password);
@@ -49,15 +43,15 @@ class AuthController extends ResponseApiController
         $user->save();
         $user->roles()->sync(2);
         if ($url_id) {
-            foreach ($url_id as $id) {
-                $avatar[] = Upload::find($id)->url;
-            }
+            $avatar = Upload::find($url_id)->url;
             $user->avatar = $avatar;
         }
         Mail::to($user->email)->send(new VerifyPin($pin));
+        $user->role = $user->roles()->pluck('name');
 
-        return $this->handleSuccess($user, 'success');
+        return $this->handleSuccess($user, 'register success');
     }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -76,8 +70,13 @@ class AuthController extends ResponseApiController
         ])) {
             $user = User::whereEmail($request->email)->first();
             $user->token = $user->createToken('App')->accessToken;
+            $user->role = $user->roles()->pluck('name');
+            $url_id = $user->avatar;
+            if ($url_id) {
+                $user->avatar = Upload::find($url_id)->url;
+            }
 
-            return $this->handleSuccess($user, 'success');
+            return $this->handleSuccess($user, 'get success data');
         }
 
         return $this->handleError('wrong password or email', 401);

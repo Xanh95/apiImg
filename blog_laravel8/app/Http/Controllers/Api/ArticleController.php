@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\ArticleDetailRequest;
 use App\Models\Article;
 use App\Models\ArticleDetail;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class ArticleController extends ResponseApiController
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view articles', 403);
         }
 
         $status = $request->input('status');
@@ -55,7 +56,8 @@ class ArticleController extends ResponseApiController
         }
         $articles = $query->orderBy($sort_by, $sort)->paginate($limit);
         foreach ($articles as $article) {
-            $article->category = implode('-', $article->category()->pluck('category_id')->toArray());
+            $article->category_id = implode('-', $article->category()->pluck('category_id')->toArray());
+            $article->category_name = $article->category()->pluck('name');
             $url_ids = $article->thumbnail;
             if ($url_ids) {
                 $url_ids = explode('-', $url_ids);
@@ -71,7 +73,7 @@ class ArticleController extends ResponseApiController
     public function store(ArticleRequest $request)
     {
         if (!$request->user()->hasPermission('create')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized create article', 403);
         }
 
         $title = $request->title;
@@ -79,9 +81,9 @@ class ArticleController extends ResponseApiController
         $slug =  Str::slug($title);
         $user = Auth::id();
         $article = new Article;
-        $category_ids = $request->category_id;
+        $category_ids = $request->category_ids;
         $data_article_meta = $request->article_metas;
-        $url_ids = $request->url_id;
+        $url_ids = $request->url_ids;
         $content = $request->content;
         $seo_title = $request->seo_title;
         $seo_content = $request->content;
@@ -99,7 +101,7 @@ class ArticleController extends ResponseApiController
         $article->content = $content;
         if ($url_ids) {
             $article->thumbnail = implode('-', $url_ids);
-            CheckUsed($url_ids);
+            CheckUsed($url_ids); // kiểm tra những ảnh  tạo ra sử dụng và xóa những ảnh không dùng đi
         }
         $article->save();
         foreach ($this->languages as $language) {
@@ -126,13 +128,24 @@ class ArticleController extends ResponseApiController
             }
         }
         $article->Category()->sync($category_ids);
+        $article->category_id = $article->category()->pluck('category_id');
+        $article->category_name = $article->category()->pluck('name');
+        $url_ids = $article->thumbnail;
+        if ($url_ids) {
+            $url_ids = explode('-', $url_ids);
+            foreach ($url_ids as $url_id) {
+                $image[] = Upload::find($url_id)->url;
+            }
+            $article->image = $image;
+        }
+
 
         return $this->handleSuccess($article, 'save success');
     }
     public function edit(Request $request, Article $article)
     {
         if (!$request->user()->hasPermission('view')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized view article', 403);
         }
 
         $language = $request->language;
@@ -151,16 +164,16 @@ class ArticleController extends ResponseApiController
             $article->image = $image;
         }
 
-        return $this->handleSuccess($article, 'success');
+        return $this->handleSuccess($article, 'get success data article');
     }
 
     public function update(ArticleRequest $request, Article $article)
     {
         if (!$request->user()->hasPermission('update')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized edit article', 403);
         }
         if ($article->status == 'published' && !$request->user()->hasRole('admin')) {
-            return $this->handleError('Unauthorized', 403);
+            return $this->handleError('Unauthorized edit article', 403);
         }
 
         $title = $request->title;
@@ -187,9 +200,9 @@ class ArticleController extends ResponseApiController
         $article->content = $content;
         $article->status = 'pending';
         if ($request->has('url_id')) {
-            deleteFile($current_url);
+            deleteFile($current_url); // xóa ảnh cũ đi
             $article->thumbnail = implode('-', $url_ids);
-            CheckUsed($url_ids);
+            CheckUsed($url_ids); // kiểm tra những ảnh  tạo ra sử dụng và xóa những ảnh không dùng đi
         }
         $article->save();
         $article->articleDetail()->delete();
@@ -231,7 +244,7 @@ class ArticleController extends ResponseApiController
         Article::onlyTrashed()->whereIn('id', $ids)->restore();
         foreach ($ids as $id) {
             $article = Article::find($id);
-            $article->status = 'active';
+            $article->status = 'pending';
             $article->save();
         }
 
@@ -253,10 +266,10 @@ class ArticleController extends ResponseApiController
             $article->save();
             $reversion_articles = $article->ReversionArticle()->get();
             foreach ($reversion_articles as $reversion) {
-                deleteFile($reversion->new_thumbnail);
+                deleteFile($reversion->new_thumbnail); // xóa ảnh của của bản reversion article
             }
             if ($type === 'force_delete') {
-                deleteFile($article->thumbnail);
+                deleteFile($article->thumbnail); // xóa ảnh của  article đi
                 $article->forceDelete();
             } else {
                 $article->delete();
@@ -269,37 +282,32 @@ class ArticleController extends ResponseApiController
         }
     }
 
-    public function updateDetails(Request $request, Article $article)
+    public function updateDetails(ArticleDetailRequest $request, Article $article)
     {
         if (!$request->user()->hasPermission('update')) {
             return  $this->handleError('Unauthorized edit this language of article', 403);
         }
-
-        $request->validate([
-            'title' => 'required|string|max: 255',
-            'description' => 'required|string',
-            'content' => 'required|string',
-            'language' => 'required'
-        ], [
-            'title.required' => 'A title is required',
-            'title.string' => 'The title must be in string format',
-            'title.max' => 'A title with a maximum of 255 characters'
-        ]);
 
         $language = $request->language;
         $title = $request->title;
         $description = $request->description;
         $content = $request->content;
         $slug =  Str::slug($title);
+        $seo_title = $request->seo_title;
+        $seo_content = $request->content;
+        $seo_description = $request->description;
 
         if (!($language && in_array($language, $this->languages))) {
             return $this->handleError('Not Found Language', 404);
         }
         $article_detail = $article->articleDetail()->where('language', $language)->first();
         $article_detail->title = $title;
-        $article_detail->slug = $slug;
         $article_detail->description = $description;
         $article_detail->content = $content;
+        $article_detail->slug = $slug;
+        $article_detail->seo_title = $seo_title;
+        $article_detail->seo_description = $seo_description;
+        $article_detail->seo_content = $seo_content;
         $article_detail->save();
         $article->status = 'pending';
         $article->save();

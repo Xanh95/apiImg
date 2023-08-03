@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Traits\HasPermissionsTrait;
 use Illuminate\Http\Request;
 
 class TopPagePolicy
