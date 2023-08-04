@@ -11,7 +11,7 @@ use App\Traits\HasPermissionsTrait;
 
 class Article extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasPermissionsTrait;
     protected $fillable = [
         'title',
         'status',
