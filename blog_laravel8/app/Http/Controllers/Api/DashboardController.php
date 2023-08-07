@@ -21,10 +21,11 @@ class DashboardController extends ResponseApiController
         foreach ($categories as $category) {
             if ($category->url) {
                 $url_ids = explode('-', $category->url);
+                $images = [];
                 foreach ($url_ids as $url_id) {
-                    $image[] = Upload::find($url_id)->url;
+                    $images[] = Upload::find($url_id)->url;
                 }
-                $category->image = $image;
+                $category->image = $images;
             }
         }
         $posts = Post::latest()->where('status', 'active')->limit(10)->get();
@@ -32,10 +33,11 @@ class DashboardController extends ResponseApiController
             $url_ids = $post->postMeta()->where('meta_key', 'url_id')->pluck('meta_value');
             if (!$url_ids->isEmpty()) {
                 $url_ids = explode('-', $url_ids[0]);
+                $images = [];
                 foreach ($url_ids as $url_id) {
-                    $image[] = Upload::find($url_id)->url;
+                    $images[] = Upload::find($url_id)->url;
                 }
-                $post->image = $image;
+                $post->image = $images;
             }
         }
         $articles = Article::latest()->where('status', 'published')->limit(10)->get();
@@ -44,10 +46,11 @@ class DashboardController extends ResponseApiController
             $url_ids = $article->thumbnail;
             if ($url_ids) {
                 $url_ids = explode('-', $url_ids);
+                $images = [];
                 foreach ($url_ids as $url_id) {
-                    $image[] = Upload::find($url_id)->url;
+                    $images[] = Upload::find($url_id)->url;
                 }
-                $article->image = $image;
+                $article->image = $images;
             }
         }
         $data = [

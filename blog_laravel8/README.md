@@ -1,3 +1,9 @@
+<p>
+    &nbsp;
+</p>
+<p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;text-align:center;" dir="ltr">
+    <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:18pt;"><span style="font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;"><strong>Dự Án&nbsp;</strong></span></span>
+</p>
 <p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;" dir="ltr">
     <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:18pt;"><span style="font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;"><strong>Công nghệ sử dụng</strong></span></span>
 </p>
@@ -1705,3 +1711,31 @@
 <p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;" dir="ltr">
     <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;font-weight:400;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">seeder tạo dữ liệu mẫu cho cơ sở dữ liệu</span></span>
 </p>
+<p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;" dir="ltr">
+    <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;font-weight:400;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">link postman export</span></span>
+</p>
+<p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;" dir="ltr">
+    <a style="text-decoration:none;" target="_blank" rel="noopener noreferrer" href="https://drive.google.com/file/d/1EKbIX8iz1bSeWZosdTYxNmW8xYaHHBLw/view?usp=sharing"><span style="background-color:transparent;color:#1155cc;font-family:Arial,sans-serif;font-size:11pt;"><span style="-webkit-text-decoration-skip:none;font-style:normal;font-variant:normal;font-weight:400;text-decoration-skip-ink:none;vertical-align:baseline;white-space:pre-wrap;"><u>https://drive.google.com/file/d/1EKbIX8iz1bSeWZosdTYxNmW8xYaHHBLw/view?usp=sharing</u></span></span></a>
+</p>
+<p style="line-height:1.38;margin-bottom:0pt;margin-top:0pt;" dir="ltr">
+    <span style="background-color:transparent;color:#333333;font-family:Arial,sans-serif;font-size:18pt;"><span style="font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;"><strong>IX. &nbsp; Module DashBorad</strong></span></span>
+</p>
+<ol style="margin-bottom:0;margin-top:0;padding-inline-start:48px;" start="49">
+    <li style="background-color:transparent;color:#333333;font-family:Arial,sans-serif;font-size:11pt;font-style:normal;font-variant:normal;list-style-type:decimal;text-decoration:none;vertical-align:baseline;white-space:pre;" dir="ltr" aria-level="1">
+        <span style="background-color:transparent;color:#333333;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;"><strong>hiển thị review</strong></span></span>
+    </li>
+</ol>
+<ul style="margin-bottom:0;margin-top:0;padding-inline-start:48px;">
+    <li style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;font-style:normal;font-variant:normal;font-weight:400;list-style-type:disc;text-decoration:none;vertical-align:baseline;white-space:pre;" dir="ltr" aria-level="1">
+        <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;font-weight:400;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">Hiển thị ra tổng số lượng category, post, article.</span></span>
+    </li>
+    <li style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;font-style:normal;font-variant:normal;font-weight:400;list-style-type:disc;text-decoration:none;vertical-align:baseline;white-space:pre;" dir="ltr" aria-level="1">
+        <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;font-weight:400;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">Show ra 10 bài category mới nhất, 10 bài post mới nhất và 10 article mới nhất</span></span>
+    </li>
+    <li style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;font-style:normal;font-variant:normal;font-weight:400;list-style-type:disc;text-decoration:none;vertical-align:baseline;white-space:pre;" dir="ltr" aria-level="1">
+        <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="font-style:normal;font-variant:normal;font-weight:400;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">link api phương thức get :&nbsp;</span><span style="-webkit-text-decoration-skip:none;font-style:normal;font-variant:normal;font-weight:400;text-decoration-skip-ink:none;vertical-align:baseline;white-space:pre-wrap;"><u>localhost/api/dashboard</u></span></span>
+    </li>
+    <li style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;font-style:normal;font-variant:normal;font-weight:400;list-style-type:disc;text-decoration:none;vertical-align:baseline;white-space:pre;" dir="ltr" aria-level="1">
+        <span style="background-color:transparent;color:#000000;font-family:Arial,sans-serif;font-size:11pt;"><span style="-webkit-text-decoration-skip:none;font-style:normal;font-variant:normal;font-weight:400;text-decoration-skip-ink:none;vertical-align:baseline;white-space:pre-wrap;"><u>yêu cầu đăng nhập tài khoản xác thực</u></span></span>
+    </li>
+</ul>
