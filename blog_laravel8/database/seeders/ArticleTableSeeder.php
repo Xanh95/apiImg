@@ -23,7 +23,7 @@ class ArticleTableSeeder extends Seeder
             $article = new Article();
             $category_ids = random_int(46, 95);
             $data_article_meta = [
-                "key_post_meta_$i" => "value article meta $i",
+                "key_article_meta_$i" => "value article meta $i",
             ];
             $title = "article Number $i";
             $description = "description of article number $i";

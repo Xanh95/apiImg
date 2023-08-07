@@ -182,7 +182,7 @@ class UserController extends ResponseApiController
         $user->save();
         $user->roles()->sync($role);
         if ($user->avatar) {
-            $user->avatar = Upload::find($user->avatar)->first()->url;
+            $user->avatar = Upload::find($user->avatar)->url;
         }
         $user->role = $user->roles()->pluck('name');
 
